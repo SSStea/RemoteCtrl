@@ -2,10 +2,97 @@
 #include "pch.h"
 #include "framework.h"
 
+class CPacket
+{
+public:
+	CPacket():sHead(0), nLength(0), sCmd(0), sSum(0) {}
+
+	CPacket(const CPacket& packet)
+	{
+		sHead = packet.sHead;
+		nLength = packet.nLength;
+		sCmd = packet.sCmd;
+		strData = packet.strData;
+		sSum = packet.sSum;
+	}
+
+	CPacket& operator=(const CPacket& packet)
+	{
+		if (this == &packet)
+		{
+			return *this;
+		}
+		sHead = packet.sHead;
+		nLength = packet.nLength;
+		sCmd = packet.sCmd;
+		strData = packet.strData;
+		sSum = packet.sSum;
+	}
+
+	CPacket(const BYTE* pData, size_t& nSize)
+	{
+		size_t pos = 0;//代表目前数据解析到哪个位置
+		for (; pos < nSize; pos++)
+		{
+			if (*(WORD*)(pData + pos) == 0xFEFF)
+			{
+				sHead = *(WORD*)(pData + pos);
+				pos += 2;//解析完包头，位置到包头之后
+				break;
+			}
+		}
+		if (pos + 8 > nSize)//4：nLength，2：sCmd，2：sSum，后面就不会访问越界
+		{//包数据可能不全，或者包头未能全部接收到
+			nSize = 0;
+			return;
+		}
+		nLength = *(DWORD*)(pData + pos);
+		pos += 4;//解析完长度，位置到长度之后
+		if (nLength + pos > nSize)
+		{//包未完全接收到，就返回，解析失败
+			nSize = 0;
+			return;
+		}
+
+		sCmd = *(WORD*)(pData + pos);
+		pos += 2;//解析完控制命令，位置到命令之后
+
+		if(nLength > 4)
+		{
+			strData.resize(nLength - 2 - 2);//减掉sCmd和sSum的长度
+			memcpy((void*)strData.c_str(), pData + pos, nLength - 4);
+			pos += (nLength - 4);//解析完数据，位置到数据之后
+		}
+
+		sSum = *(WORD*)(pData + pos);
+		pos += 2;//解析完校验，位置到校验之后
+		WORD sum = 0;
+		for (size_t j = 0; j < strData.size(); j++)
+		{
+			sum += BYTE(strData[pos]) & 0xFF;
+		}
+		if (sum = sSum)
+		{
+			nSize = pos;
+			return;
+		}
+		nSize = 0;
+	}
+
+	~CPacket()
+	{ }
+public:
+	WORD		sHead;		//包头：固定FE FF
+	DWORD		nLength;	//包长度：从控制命令->校验
+	WORD		sCmd;		//控制命令
+	std::string strData;	//包数据
+	WORD		sSum;		//校验
+};
+
 class CServSocket
 {
 public:
-	// 获取全局唯一的服务端 socket 管理对象。
+	// 获取全局唯一的服务端 socket 管理对象，初始化Windows socket环境
 	// 第一次调用时会 new 一个对象，后续调用都返回同一个对象。
 	static CServSocket* getInstance()
 	{//静态函数没有this指针，无法访问成员变量，只能将成员变量声明为静态
@@ -29,18 +116,10 @@ public:
 
 		sockaddr_in serv_adr;
 
-		// 先把地址结构体清零，避免里面残留随机值影响 bind。
 		memset(&serv_adr, 0, sizeof(serv_adr));
 
-		// AF_INET 表示使用 IPv4 地址。
 		serv_adr.sin_family = AF_INET;
-
-		// INADDR_ANY 表示监听本机所有网卡 IP。
-		// 比如本机有 127.0.0.1、局域网 IP，都可以接收连接。
 		serv_adr.sin_addr.s_addr = INADDR_ANY;
-
-		// htons 用来把主机字节序转换成网络字节序。
-		// 这里表示服务端监听 9527 端口。
 		serv_adr.sin_port = htons(9527);
 
 		if (bind(m_ServSock, (const sockaddr*)&serv_adr, sizeof(serv_adr)) == -1)
@@ -48,8 +127,6 @@ public:
 			return false;
 		}
 
-		// listen 后，这个 socket 才真正变成“监听 socket”。
-		// 第二个参数 1 表示连接等待队列最多放 1 个客户端。
 		if (listen(m_ServSock, 1) == -1)
 		{
 			return false;
@@ -63,25 +140,18 @@ public:
 	bool bAcceptClient()
 	{
 		sockaddr_in client_adr;
-		int cli_sz = sizeof(client_adr);
+		int			cli_sz = sizeof(client_adr);
 
-		// accept 成功后返回一个新的 socket。
-		// m_ServSock 继续负责监听，m_client 负责和这个客户端通信。
 		m_client = accept(m_ServSock, (sockaddr*)&client_adr, &cli_sz);
 		if (m_client == -1)
 		{
 			return false;
 		}
 
-		char buffer[1024];
-		//recv(m_ServSock, buffer, sizeof(buffer), 0);
-		//send(m_ServSock, buffer, sizeof(buffer), 0);
-
 		return true;
 	}
-
+#define BUFFER_SIZE 4096
 	// 处理客户端发来的命令。
-	// 当前代码只负责循环接收数据，具体“命令解析和执行”还在 TODO 中。
 	int dealCommand()
 	{
 		if (m_client == -1)
@@ -89,19 +159,25 @@ public:
 			return false;
 		}
 
-		char buffer[1024] = "";
+		char* buffer = new char[BUFFER_SIZE];
+		memset(buffer, 0, BUFFER_SIZE);
+		size_t index = 0;//指向当前buffer存储的数据的位置，值表示当前存储的总长度
 		while (true)
 		{
-			// recv 会从客户端 socket 读取数据。
-			// 返回值 > 0：实际收到的字节数
-			// 返回值 = 0：客户端正常关闭连接
-			// 返回值 < 0：接收失败
-			int len = recv(m_client, buffer, sizeof(buffer), 0);
+			size_t len = recv(m_client, buffer + index, BUFFER_SIZE - index, 0);
 			if (len <= 0)
 			{
 				return -1;
 			}
-			//TODO：处理命令
+			index += len;//收到了数据更新位置，下次再收到数据从index开始存储
+			len = index;//将长度改为当前buffer的总长度
+			m_packet = CPacket((BYTE*)buffer, len);//将buffer解析，得到解析后的数据和长度
+			if (len > 0)//如果解析到了数据
+			{
+				memmove(buffer, buffer + len, BUFFER_SIZE - len);//将解析到的数据从buffer中移走
+				index -= len;//总长度减掉解析的数据长度
+				return m_packet.sCmd;
+			}
 		}
 	}
 
@@ -112,11 +188,9 @@ public:
 	}
 
 private:
-	// m_client：和某一个客户端通信用的 socket，由 accept 返回。
-	SOCKET m_client;
-
-	// m_ServSock：服务端监听用的 socket，只负责 bind/listen/accept。
-	SOCKET m_ServSock;
+	SOCKET	m_client;
+	SOCKET	m_ServSock;
+	CPacket m_packet;
 
 	// 构造函数私有化，是单例模式的关键：
 	// 外部不能直接 new CServSocket，只能通过 getInstance 获取唯一对象。
@@ -131,8 +205,6 @@ private:
 			exit(0);
 		}
 
-		// 创建 TCP socket。
-		// PF_INET 表示 IPv4，SOCK_STREAM 表示 TCP。
 		m_ServSock = socket(PF_INET, SOCK_STREAM, 0);
 	}
 
