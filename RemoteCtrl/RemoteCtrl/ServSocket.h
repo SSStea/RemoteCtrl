@@ -156,7 +156,7 @@ public:
 	{
 		if (m_client == -1)
 		{
-			return false;
+			return -1;
 		}
 
 		char* buffer = new char[BUFFER_SIZE];
@@ -179,6 +179,7 @@ public:
 				return m_packet.sCmd;
 			}
 		}
+		return -1;
 	}
 
 	// 向当前已连接的客户端发送数据。
