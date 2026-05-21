@@ -5,7 +5,8 @@
 #include "framework.h"
 #include "RemoteCtrl.h"
 #include "ServSocket.h"
-#include <direct.h>
+
+
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -35,6 +36,8 @@ void Dump(BYTE* pData, size_t nSize)
     OutputDebugStringA(strOut.c_str());
 }
 
+//查看磁盘分区
+#include <direct.h>
 int MakeDriverInfo()//1==>A 2==>B 3==>C ... 26==>Z
 {
     std::string strRes;
@@ -53,6 +56,75 @@ int MakeDriverInfo()//1==>A 2==>B 3==>C ... 26==>Z
     Dump((BYTE*)pack.Data(), pack.Size());
 
     //CServSocket::getInstance()->bSend(pack);
+    return 0;
+}
+
+//查看指定目录下的文件
+#include <io.h>
+#include <list>
+typedef struct file_info
+{
+    file_info()
+    {
+        bIsInvalid = FALSE;
+        bIsDirectory = -1;
+        bHasNext = TRUE;
+        memset(szFileName, 0, sizeof(szFileName));
+    }
+    BOOL bIsInvalid;            //是否无效：0否 1是
+    BOOL bIsDirectory;          //是否为目录：0否 1是
+    BOOL bHasNext;              //是否还有下一个文件：0无 1有
+    char szFileName[256];       //文件名
+}FILEINFO, * pFILEINFO;
+
+int MakeDirecoryInfo()
+{
+    std::string strPath;
+    //std::list<FILEINFO> lstFileInfos;
+
+    if (!(CServSocket::getInstance()->bGetFilePath(strPath)))
+    {
+        OutputDebugString(_T("当前的命令不是获取文件列表，命令解析错误！"));
+        return -1;
+    }
+
+    if (_chdir(strPath.c_str()) != 0)
+    {
+        FILEINFO fInfo;
+        fInfo.bIsInvalid    = TRUE;
+        fInfo.bIsDirectory  = TRUE;
+        fInfo.bHasNext      = FALSE;
+        memcpy(fInfo.szFileName, strPath.c_str(), strPath.size());
+        //lstFileInfos.push_back(fInfo);
+        CPacket pack(2, (BYTE*)&fInfo, sizeof(fInfo));
+        CServSocket::getInstance()->bSend(pack);
+
+        OutputDebugString(_T("无权限访问目录！"));
+        return -2;
+    }
+
+    _finddata_t fData;
+    intptr_t hFind = 0;
+    if ((hFind = _findfirst("*", &fData)) == -1)
+    {
+        OutputDebugString(_T("未找到任何文件！"));
+        return -3;
+    }
+    do {
+        FILEINFO fInfo;
+        fInfo.bIsDirectory = ((fData.attrib & _A_SUBDIR) != 0);
+                            //(fData.attrib & _A_SUBDIR) != 0 ==>TRUE
+        memcpy(fInfo.szFileName, fData.name, strlen(fData.name));
+        //lstFileInfos.push_back(fInfo);
+        CPacket pack(2, (BYTE*)&fInfo, sizeof(fInfo));
+        CServSocket::getInstance()->bSend(pack);//获取一个文件就发送一个
+    } while (!_findnext(hFind, &fData));
+    
+    FILEINFO fInfo;
+    fInfo.bHasNext = FALSE;//告诉控制端没有下一个文件了，不必继续等待
+    CPacket pack(2, (BYTE*)&fInfo, sizeof(fInfo));
+    CServSocket::getInstance()->bSend(pack);
+
     return 0;
 }
 
@@ -112,10 +184,12 @@ int main()
 
             int nCmd = 1;
             switch (nCmd)
-            {
-            case 1:
-                //需求：处理文件 ==> 需要查看磁盘分区
+            {//需求：处理文件
+            case 1:// ==> 需要查看磁盘分区
                 MakeDriverInfo();
+                break;
+            case 2:// ==> 需要查看指定目录下的文件
+                MakeDirecoryInfo();
                 break;
             }
             
