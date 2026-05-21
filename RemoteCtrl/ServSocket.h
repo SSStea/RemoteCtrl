@@ -88,8 +88,17 @@ public:
 		sHead = 0xFEFF;
 		nLength = (DWORD)nSize + 4;//数据长度+命令长度+校验长度
 		sCmd = nCmd;
-		strData.resize(nSize);
-		memcpy((void*)strData.c_str(), pData, nSize);
+
+		if(nSize > 0)
+		{
+			strData.resize(nSize);
+			memcpy((void*)strData.c_str(), pData, nSize);
+		}
+		else
+		{
+			strData.clear();
+		}
+
 		sSum = 0;
 		for (size_t j = 0; j < strData.size(); j++)
 		{
@@ -250,7 +259,7 @@ public:
 
 	bool bGetFilePath(std::string& strPath)
 	{
-		if (m_packet.sCmd == 2)
+		if (2 <= m_packet.sCmd  && m_packet.sCmd <= 4)
 		{
 			strPath = m_packet.strData;
 			return true;
