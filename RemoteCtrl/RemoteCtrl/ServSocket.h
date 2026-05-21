@@ -86,7 +86,7 @@ public:
 	CPacket(WORD nCmd, const BYTE* pData, size_t nSize)
 	{
 		sHead = 0xFEFF;
-		nLength = nSize + 4;//数据长度+命令长度+校验长度
+		nLength = (DWORD)nSize + 4;//数据长度+命令长度+校验长度
 		sCmd = nCmd;
 		strData.resize(nSize);
 		memcpy((void*)strData.c_str(), pData, nSize);
@@ -212,7 +212,7 @@ public:
 		size_t index = 0;//指向当前buffer存储的数据的位置，值表示当前存储的总长度
 		while (true)
 		{
-			size_t len = recv(m_client, buffer + index, BUFFER_SIZE - index, 0);
+			size_t len = recv(m_client, buffer + index, BUFFER_SIZE - (int)index, 0);
 			if (len <= 0)
 			{
 				return -1;
@@ -246,6 +246,16 @@ public:
 			return false;
 		}
 		return send(m_client, pack.Data(), pack.Size(), 0) > 0;
+	}
+
+	bool bGetFilePath(std::string& strPath)
+	{
+		if (m_packet.sCmd == 2)
+		{
+			strPath = m_packet.strData;
+			return true;
+		}
+		return false;
 	}
 
 private:
