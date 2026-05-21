@@ -2,6 +2,8 @@
 #include "pch.h"
 #include "framework.h"
 
+#pragma pack(push)
+#pragma pack(1)
 class CPacket
 {
 public:
@@ -29,6 +31,7 @@ public:
 		sSum = packet.sSum;
 	}
 
+	//解析包的构造函数
 	CPacket(const BYTE* pData, size_t& nSize)
 	{
 		size_t pos = 0;//代表目前数据解析到哪个位置
@@ -69,7 +72,7 @@ public:
 		WORD sum = 0;
 		for (size_t j = 0; j < strData.size(); j++)
 		{
-			sum += BYTE(strData[pos]) & 0xFF;
+			sum += BYTE(strData[j]) & 0xFF;
 		}
 		if (sum = sSum)
 		{
@@ -77,6 +80,49 @@ public:
 			return;
 		}
 		nSize = 0;
+	}
+
+	//构造包的构造函数
+	CPacket(WORD nCmd, const BYTE* pData, size_t nSize)
+	{
+		sHead = 0xFEFF;
+		nLength = nSize + 4;//数据长度+命令长度+校验长度
+		sCmd = nCmd;
+		strData.resize(nSize);
+		memcpy((void*)strData.c_str(), pData, nSize);
+		sSum = 0;
+		for (size_t j = 0; j < strData.size(); j++)
+		{
+			sSum += BYTE(strData[j]) & 0xFF;
+		}
+	}
+
+	//获取包的大小
+	int Size()
+	{
+		return nLength + 6;
+	}
+
+	//获取包的数据
+	const char* Data()
+	{
+		strOut.resize(nLength + 6);
+		BYTE* pData = (BYTE*)strOut.c_str(); 
+		*(WORD*)pData = sHead;
+		pData += 2;
+
+		*(DWORD*)pData = nLength;
+		pData += 4;
+
+		*(WORD*)pData = sCmd;
+		pData += 2;
+
+		memcpy(pData, strData.c_str(), strData.size());
+		pData += strData.size();
+
+		*(WORD*)pData = sSum;
+
+		return strOut.c_str();
 	}
 
 	~CPacket()
@@ -87,7 +133,9 @@ public:
 	WORD		sCmd;		//控制命令
 	std::string strData;	//包数据
 	WORD		sSum;		//校验
+	std::string strOut;		//整个包的数据
 };
+#pragma pack(pop)
 
 class CServSocket
 {
@@ -185,7 +233,19 @@ public:
 	// 向当前已连接的客户端发送数据。
 	bool bSend(const char* pData, int nSize)
 	{
+		if (m_client == -1)
+		{
+			return false;
+		}
 		return send(m_client, pData, nSize, 0) > 0;
+	}
+	bool bSend(CPacket& pack)
+	{
+		if (m_client == -1)
+		{
+			return false;
+		}
+		return send(m_client, pack.Data(), pack.Size(), 0) > 0;
 	}
 
 private:
