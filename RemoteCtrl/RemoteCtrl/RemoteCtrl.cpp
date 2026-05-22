@@ -286,6 +286,56 @@ int MouseEvent()
     return 0;
 }
 
+//发送屏幕截图
+#include <atlimage.h>
+int SendScreen()
+{
+    CImage screen;//C++封装的关于图像的类
+    HDC hScreen = ::GetDC(NULL);//获取设备的上下文
+    int nBitPixel = GetDeviceCaps(hScreen, BITSPIXEL);//获取设备的多个属性：得到位宽
+    int nWidth = GetDeviceCaps(hScreen, HORZRES);//得到宽度
+    int nHeight = GetDeviceCaps(hScreen, VERTRES);//得到高度
+
+    screen.Create(nWidth, nHeight, nBitPixel);
+    BitBlt(screen.GetDC(), 0, 0, 1920, 1020, hScreen, 0, 0, SRCCOPY);
+    ReleaseDC(NULL, hScreen);
+
+    HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);//获取全局可移动的内存
+    if (hMem == NULL)
+    {
+        return -1;
+    }
+    IStream* pStream = NULL;//建立一个内存流，利用Save的重载函数
+    HRESULT hRet = CreateStreamOnHGlobal(hMem, TRUE, &pStream);
+    if(hRet == S_OK)
+    {
+        screen.Save(pStream, Gdiplus::ImageFormatPNG);
+        LARGE_INTEGER begin = { 0 };
+        pStream->Seek(begin, STREAM_SEEK_SET, NULL);//将内存流的指针设置到流的头部
+        PBYTE pData = (PBYTE)GlobalLock(hMem);//必须要lock，不然hMem和pStream是分离的，读不到数据
+        SIZE_T nSize = GlobalSize(hMem);
+        CPacket pack(6, pData, nSize);//将读出来的内存数据打包
+        CServSocket::getInstance()->bSend(pack);
+        GlobalUnlock(hMem);
+    }
+
+    pStream->Release();
+    GlobalFree(hMem);
+    screen.ReleaseDC();
+
+    /*
+    DWORD tick = GetTickCount64();
+    screen.Save(_T("test2020.png"), Gdiplus::ImageFormatPNG);
+    TRACE("png %d\r\n", GetTickCount64() - tick);
+    tick = GetTickCount64();
+    screen.Save(_T("test2020.jpg"), Gdiplus::ImageFormatJPEG);
+    TRACE("jpg %d\r\n", GetTickCount64() - tick);
+    screen.ReleaseDC();
+    */
+
+    return 0;
+}
+
 int main()
 {
     int nRetCode = 0;
@@ -340,7 +390,7 @@ int main()
             //    int nRet = pServer->dealCommand();
             //}
 
-            int nCmd = 1;
+            int nCmd = 6;
             switch (nCmd)
             {//需求：处理文件
             case 1:// ==> 需要查看磁盘分区
@@ -358,7 +408,9 @@ int main()
             case 5:// ==> 需要操作鼠标
                 MouseEvent();
                 break;
-
+            case 6:// ==> 需要发送屏幕内容 ==> 本质是发送屏幕的截图
+                SendScreen();
+                break;
             }
             
         }
