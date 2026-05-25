@@ -12,3 +12,22 @@ CClientSocket::CHelper CClientSocket::m_helper;
 // 如果打开这一行，全局变量初始化时也会主动创建服务端单例。
 // 现在已经有 m_helper 负责创建和释放，所以这里暂时不需要。
 //CServSocket* pServer = CServSocket::getInstance();
+
+std::string GetSockErrInfo(int wsaErrcode)
+{
+	std::string ret;
+	LPVOID lpMsgBuf = NULL;
+	FormatMessage(
+		FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER,
+		NULL,
+		wsaErrcode,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		(LPTSTR)&lpMsgBuf,
+		0,
+		NULL
+	);
+	ret = (char*)lpMsgBuf;
+	LocalFree(lpMsgBuf);
+
+	return ret;
+}

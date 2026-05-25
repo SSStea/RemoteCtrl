@@ -65,6 +65,8 @@ cmake_install.cmake
 *.pdb
 *.manifest
 
+*.aps
+
 # Ignore receiver / sender build artifacts
 receiver/**/Debug/
 receiver/**/Release/
