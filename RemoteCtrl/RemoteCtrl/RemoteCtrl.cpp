@@ -336,6 +336,81 @@ int SendScreen()
     return 0;
 }
 
+#include "LockInfoDialog.h"
+CLockInfoDialog dlg;
+unsigned int threadid = 0;
+
+unsigned _stdcall threadLockDlg(void* arg)
+{
+    TRACE("%s(%d): %d\r\n", __FUNCTION__, __LINE__, GetCurrentThreadId());
+    dlg.Create(IDD_DIALOG_INFO, NULL);//非模态Dialog创建
+    dlg.ShowWindow(SW_SHOW);//显示窗口
+    CRect rect;
+    rect.left = 0;
+    rect.top = 0;
+    rect.right = GetSystemMetrics(SM_CXFULLSCREEN);
+    rect.bottom = GetSystemMetrics(SM_CYFULLSCREEN);
+    rect.bottom *= 1.07;
+    dlg.MoveWindow(rect);//设置窗口显示大小
+    dlg.SetWindowPos(&dlg.wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);//窗口置顶
+
+    ShowCursor(FALSE);//不显示鼠标
+    ::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_HIDE);//隐藏任务栏
+
+    dlg.GetWindowRect(rect);
+    rect.left = 0;
+    rect.top = 0;
+    rect.right = 1;
+    rect.bottom = 1;
+    ClipCursor(rect);//限制鼠标活动范围
+
+    MSG msg;
+    while (GetMessage(&msg, NULL, 0, 0))
+    {//MFC编程是基于消息循环的，所以必须有这个循环对话框才显示
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+        if (msg.message == WM_KEYDOWN && msg.wParam == 0x1B)//按下ESC退出
+        {
+            TRACE("msg: %08X, wparam: %08X, lparam: %08X\r\n",
+                msg.message, msg.wParam, msg.lParam);
+            break;
+        }
+    }
+
+	::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_SHOW);
+	ShowCursor(TRUE);
+    dlg.DestroyWindow();
+
+    _endthreadex(0);
+    return 0;
+}
+
+int LockMachine()
+{
+    if (dlg.m_hWnd == NULL || dlg.m_hWnd == INVALID_HANDLE_VALUE)
+	{
+		//_beginthread(threadLockDlg, 0, NULL);//放到一个线程里，避免消息死循环接收不到unlock
+        _beginthreadex(NULL, 0, threadLockDlg, NULL, 0, &threadid);
+        TRACE("threadid: %d\r\n", threadid);
+    }
+
+	CPacket pack(7, NULL, 0);
+	CServSocket::getInstance()->bSend(pack);
+	return 0;
+}
+
+int UnLockMachine()
+{
+    //前两个方法不可以的原因是LockMachine是用线程控制的，线程只能接收到自己线程的消息，
+    // 所以需要用PostThreadMessage方法给对应线程发消息
+	//dlg.SendMessage(WM_KEYDOWN, 0x1B, 00010001);
+    //::SendMessage(dlg.m_hWnd, WM_KEYDOWN, 0x1B, 00010001);
+    PostThreadMessage(threadid, WM_KEYDOWN, 0x1B, 00010001);
+	CPacket pack(8, NULL, 0);
+	CServSocket::getInstance()->bSend(pack);
+	return 0;
+}
+
 int main()
 {
     int nRetCode = 0;
@@ -390,7 +465,7 @@ int main()
             //    int nRet = pServer->dealCommand();
             //}
 
-            int nCmd = 6;
+            int nCmd = 7;
             switch (nCmd)
             {//需求：处理文件
             case 1:// ==> 需要查看磁盘分区
@@ -411,8 +486,21 @@ int main()
             case 6:// ==> 需要发送屏幕内容 ==> 本质是发送屏幕的截图
                 SendScreen();
                 break;
+            case 7:// ==> 需要锁住机器不让用户操纵
+                LockMachine();
+                break;
+            case 8:
+                UnLockMachine();
+                break;
             }
-            
+			
+            Sleep(5000);
+            UnLockMachine();
+            TRACE("hWnd = %d\r\n", dlg.m_hWnd);
+			while (dlg.m_hWnd != NULL && dlg.m_hWnd != INVALID_HANDLE_VALUE)
+			{
+				Sleep(10);
+			}
         }
     }
     else
