@@ -1,6 +1,7 @@
 ﻿
 // RemoteClientDlg.h: 头文件
 //
+#include "ClientSocket.h"
 
 #pragma once
 
