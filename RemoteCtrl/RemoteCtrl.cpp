@@ -411,6 +411,39 @@ int UnLockMachine()
 	return 0;
 }
 
+int ExcuteCmd(int nCmd)
+{
+    int nRet = 0;
+	switch (nCmd)
+	{//需求：处理文件
+	case 1:// ==> 需要查看磁盘分区
+        nRet = MakeDriverInfo();
+		break;
+	case 2:// ==> 需要查看指定目录下的文件
+        nRet = MakeDirecoryInfo();
+		break;
+	case 3:// ==> 需要打开文件
+        nRet = RunFile();
+		break;
+	case 4:// ==> 需要下载文件
+        nRet = DownLoadFile();
+		break;
+	case 5:// ==> 需要操作鼠标
+        nRet = MouseEvent();
+		break;
+	case 6:// ==> 需要发送屏幕内容 ==> 本质是发送屏幕的截图
+        nRet = SendScreen();
+		break;
+	case 7:// ==> 需要锁住机器不让用户操纵
+        nRet = LockMachine();
+		break;
+	case 8:
+        nRet = UnLockMachine();
+		break;
+	}
+    return nRet;
+}
+
 int main()
 {
     int nRetCode = 0;
@@ -432,75 +465,47 @@ int main()
         {
             // 取得服务端 socket 单例。
             // getInstance 会确保 Winsock 环境已经初始化，并且服务端 socket 对象只创建一次。
-            //CServSocket*    pServer = CServSocket::getInstance();
-            //// 统计 accept 客户端失败的次数，连续失败太多就结束程序。
-            //int             nCount = 0;
-            //// 初始化监听 socket：创建地址、绑定 9527 端口、进入监听状态。
-            //if (!pServer->bInitSocket())
-            //{
-            //    MessageBox(NULL, _T("网络初始化异常，未能成功初始化，请检查网络状态"),
-            //        _T("网络初始化失败"), MB_OK | MB_ICONERROR);
-            //    exit(0);
-            //}
-            //// 服务端主循环。
-            //// 只要单例对象还存在，就不断等待客户端接入并处理客户端命令。
-            //while (CServSocket::getInstance() != NULL)
-            //{
-            //    // 等待客户端连接。
-            //    // 如果没有客户端连接，bAcceptClient 内部的 accept 会阻塞等待。
-            //    if (!pServer->bAcceptClient())
-            //    {
-            //        if (nCount >= 3)
-            //        {
-            //            MessageBox(NULL, _T("多次无法正常接入用户，结束程序"),
-            //                _T("接入用户失败！"), MB_OK | MB_ICONERROR);
-            //            exit(0);
-            //        }
-            //        MessageBox(NULL, _T("无法正常接入用户，自动重试"), 
-            //            _T("接入用户失败！"), MB_OK | MB_ICONERROR);
-            //        nCount++;
-            //    }
-            //    // 客户端连接成功后，进入命令处理逻辑。
-            //    // 当前 dealCommand 里还没有真正解析命令，只是在循环 recv。
-            //    int nRet = pServer->dealCommand();
-            //}
-
-            int nCmd = 7;
-            switch (nCmd)
-            {//需求：处理文件
-            case 1:// ==> 需要查看磁盘分区
-                MakeDriverInfo();
-                break;
-            case 2:// ==> 需要查看指定目录下的文件
-                MakeDirecoryInfo();
-                break;
-            case 3:// ==> 需要打开文件
-                RunFile();
-                break;
-            case 4:// ==> 需要下载文件
-                DownLoadFile();
-                break;
-            case 5:// ==> 需要操作鼠标
-                MouseEvent();
-                break;
-            case 6:// ==> 需要发送屏幕内容 ==> 本质是发送屏幕的截图
-                SendScreen();
-                break;
-            case 7:// ==> 需要锁住机器不让用户操纵
-                LockMachine();
-                break;
-            case 8:
-                UnLockMachine();
-                break;
+            CServSocket*    pServer = CServSocket::getInstance();
+            // 统计 accept 客户端失败的次数，连续失败太多就结束程序。
+            int             nCount = 0;
+            // 初始化监听 socket：创建地址、绑定 9527 端口、进入监听状态。
+            if (!pServer->bInitSocket())
+            {
+                MessageBox(NULL, _T("网络初始化异常，未能成功初始化，请检查网络状态"),
+                    _T("网络初始化失败"), MB_OK | MB_ICONERROR);
+                exit(0);
             }
-			
-            Sleep(5000);
-            UnLockMachine();
-            TRACE("hWnd = %d\r\n", dlg.m_hWnd);
-			while (dlg.m_hWnd != NULL && dlg.m_hWnd != INVALID_HANDLE_VALUE)
-			{
-				Sleep(10);
-			}
+            // 服务端主循环。
+            // 只要单例对象还存在，就不断等待客户端接入并处理客户端命令。
+            while (CServSocket::getInstance() != NULL)
+            {
+                // 等待客户端连接。
+                // 如果没有客户端连接，bAcceptClient 内部的 accept 会阻塞等待。
+                if (!pServer->bAcceptClient())
+                {
+                    if (nCount >= 3)
+                    {
+                        MessageBox(NULL, _T("多次无法正常接入用户，结束程序"),
+                            _T("接入用户失败！"), MB_OK | MB_ICONERROR);
+                        exit(0);
+                    }
+                    MessageBox(NULL, _T("无法正常接入用户，自动重试"), 
+                        _T("接入用户失败！"), MB_OK | MB_ICONERROR);
+                    nCount++;
+                }
+                // 客户端连接成功后，进入命令处理逻辑。
+                // 当前 dealCommand 里还没有真正解析命令，只是在循环 recv。
+                int nRet = pServer->dealCommand();
+                if (nRet > 0)
+                {
+                    nRet = ExcuteCmd(pServer->getPacket().sCmd);
+                    if (nRet != 0)
+                    {
+                        TRACE("执行命令失败：%d，ret = %d\r\n", pServer->getPacket().sCmd, nRet);
+                    }
+                    pServer->CloseClient();
+                }
+            }            
         }
     }
     else

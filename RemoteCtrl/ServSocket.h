@@ -242,7 +242,7 @@ public:
 			}
 			index += len;//收到了数据更新位置，下次再收到数据从index开始存储
 			len = index;//将长度改为当前buffer的总长度
-			m_packet = CPacket((BYTE*)buffer, len);//将buffer解析，得到解析后的数据和长度
+			m_packet = CPacket((BYTE*)buffer, len);//将buffer解析，得到解析后的数据和长度组包
 			if (len > 0)//如果解析到了数据
 			{
 				memmove(buffer, buffer + len, BUFFER_SIZE - len);//将解析到的数据从buffer中移走
@@ -289,6 +289,17 @@ public:
 			return true;
 		}
 		return false;
+	}
+
+	CPacket& getPacket()
+	{
+		return m_packet;
+	}
+
+	void CloseClient()
+	{
+		closesocket(m_client);
+		m_client = INVALID_SOCKET;
 	}
 
 private:
