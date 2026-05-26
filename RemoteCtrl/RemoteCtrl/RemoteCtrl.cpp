@@ -47,15 +47,16 @@ int MakeDriverInfo()//1==>A 2==>B 3==>C ... 26==>Z
         {
             if (strRes.size() > 0)
             {
-                strRes += ',';
+                strRes.push_back(',');
             }
-            strRes += ('A' + i - 1);
+            strRes.push_back('A' + i - 1);
         }
     }
+    strRes.push_back(',');
     CPacket pack(1, (BYTE*)strRes.c_str(), strRes.size());//重载了一个打包用的构造函数
     Dump((BYTE*)pack.Data(), pack.Size());
 
-    //CServSocket::getInstance()->bSend(pack);
+    CServSocket::getInstance()->bSend(pack);
     return 0;
 }
 
