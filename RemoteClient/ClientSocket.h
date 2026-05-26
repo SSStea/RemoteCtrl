@@ -182,7 +182,7 @@ public:
 	// 初始化客户端连接 socket：
 	// 1. 准备服务器地址
 	// 2. 客户端连接服务器
-	bool bInitSocket(const std::string& strIPAddress)
+	bool bInitSocket(int nIP, int nPort)
 	{
 		if (m_Sock != INVALID_SOCKET)
 		{
@@ -200,8 +200,9 @@ public:
 		memset(&serv_adr, 0, sizeof(serv_adr));
 
 		serv_adr.sin_family = AF_INET;
-		serv_adr.sin_addr.s_addr = inet_addr(strIPAddress.c_str());
-		serv_adr.sin_port = htons(9527);
+		TRACE("addr %08X nIP %08X\r\n", inet_addr("127.0.0.1"), nIP);
+		serv_adr.sin_addr.s_addr = htonl(nIP);
+		serv_adr.sin_port = htons(nPort);
 
 		if (serv_adr.sin_addr.s_addr == INADDR_NONE)
 		{
