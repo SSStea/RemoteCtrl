@@ -63,20 +63,6 @@ int MakeDriverInfo()//1==>A 2==>B 3==>C ... 26==>Z
 //查看指定目录下的文件
 #include <io.h>
 #include <list>
-typedef struct file_info
-{
-    file_info()
-    {
-        bIsInvalid = FALSE;
-        bIsDirectory = -1;
-        bHasNext = TRUE;
-        memset(szFileName, 0, sizeof(szFileName));
-    }
-    BOOL bIsInvalid;            //是否无效：0否 1是
-    BOOL bIsDirectory;          //是否为目录：0否 1是
-    BOOL bHasNext;              //是否还有下一个文件：0无 1有
-    char szFileName[256];       //文件名
-}FILEINFO, * pFILEINFO;
 
 int MakeDirecoryInfo()
 {
@@ -92,11 +78,7 @@ int MakeDirecoryInfo()
     if (_chdir(strPath.c_str()) != 0)
     {
         FILEINFO fInfo;
-        fInfo.bIsInvalid    = TRUE;
-        fInfo.bIsDirectory  = TRUE;
-        fInfo.bHasNext      = FALSE;
-        memcpy(fInfo.szFileName, strPath.c_str(), strPath.size());
-        //lstFileInfos.push_back(fInfo);
+        fInfo.bHasNext = FALSE;  
         CPacket pack(2, (BYTE*)&fInfo, sizeof(fInfo));
         CServSocket::getInstance()->bSend(pack);
 
@@ -116,7 +98,8 @@ int MakeDirecoryInfo()
         fInfo.bIsDirectory = ((fData.attrib & _A_SUBDIR) != 0);
                             //(fData.attrib & _A_SUBDIR) != 0 ==>TRUE
         memcpy(fInfo.szFileName, fData.name, strlen(fData.name));
-        //lstFileInfos.push_back(fInfo);
+        TRACE("%s\r\n", fInfo.szFileName);
+
         CPacket pack(2, (BYTE*)&fInfo, sizeof(fInfo));
         CServSocket::getInstance()->bSend(pack);//获取一个文件就发送一个
     } while (!_findnext(hFind, &fData));
@@ -351,7 +334,7 @@ unsigned _stdcall threadLockDlg(void* arg)
     rect.top = 0;
     rect.right = GetSystemMetrics(SM_CXFULLSCREEN);
     rect.bottom = GetSystemMetrics(SM_CYFULLSCREEN);
-    rect.bottom *= 1.07;
+    rect.bottom = LONG(rect.bottom * 1.07);
     dlg.MoveWindow(rect);//设置窗口显示大小
     dlg.SetWindowPos(&dlg.wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);//窗口置顶
 

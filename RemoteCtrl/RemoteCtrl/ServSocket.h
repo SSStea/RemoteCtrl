@@ -2,6 +2,8 @@
 #include "pch.h"
 #include "framework.h"
 
+void Dump(BYTE* pData, size_t nSize);
+
 #pragma pack(push)
 #pragma pack(1)
 class CPacket
@@ -160,6 +162,21 @@ typedef struct MouseEvent
 	POINT	ptXY;		//坐标
 }MOUSEEVENT, *pMOUSEEVENT;
 
+typedef struct file_info
+{
+	file_info()
+	{
+		bIsInvalid = FALSE;
+		bIsDirectory = -1;
+		bHasNext = TRUE;
+		memset(szFileName, 0, sizeof(szFileName));
+	}
+	BOOL bIsInvalid;            //是否无效：0否 1是
+	BOOL bIsDirectory;          //是否为目录：0否 1是
+	BOOL bHasNext;              //是否还有下一个文件：0无 1有
+	char szFileName[256];       //文件名
+}FILEINFO, * pFILEINFO;
+
 class CServSocket
 {
 public:
@@ -278,6 +295,9 @@ public:
 		{
 			return false;
 		}
+		//Dump((BYTE*)pack.Data(), pack.Size());
+		Sleep(1);//如果不做处理可能由于发送太快导致客户端缓冲区满了被覆盖从而丢包，
+					//进而导致客户端显示文件、目录信息不全，因此这里延迟1ms
 		return send(m_client, pack.Data(), pack.Size(), 0) > 0;
 	}
 

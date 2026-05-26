@@ -163,6 +163,21 @@ typedef struct MouseEvent
 	POINT	ptXY;		//坐标
 }MOUSEEVENT, * pMOUSEEVENT;
 
+typedef struct file_info
+{
+	file_info()
+	{
+		bIsInvalid = FALSE;
+		bIsDirectory = -1;
+		bHasNext = TRUE;
+		memset(szFileName, 0, sizeof(szFileName));
+	}
+	BOOL bIsInvalid;            //是否无效：0否 1是
+	BOOL bIsDirectory;          //是否为目录：0否 1是
+	BOOL bHasNext;              //是否还有下一个文件：0无 1有
+	char szFileName[256];       //文件名
+}FILEINFO, * pFILEINFO;
+
 std::string GetSockErrInfo(int wsaErrcode);
 
 class CClientSocket
