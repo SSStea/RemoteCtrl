@@ -411,6 +411,15 @@ int UnLockMachine()
 	return 0;
 }
 
+int TestConnect()
+{
+    CPacket pack(1981, NULL, 0);
+	bool bRet = CServSocket::getInstance()->bSend(pack);
+    TRACE("Send ret = %d\r\n", bRet);
+    
+    return 0;
+}
+
 int ExcuteCmd(int nCmd)
 {
     int nRet = 0;
@@ -440,6 +449,9 @@ int ExcuteCmd(int nCmd)
 	case 8:
         nRet = UnLockMachine();
 		break;
+    case 1981:
+        nRet = TestConnect();
+        break;
 	}
     return nRet;
 }
@@ -493,12 +505,14 @@ int main()
                         _T("接入用户失败！"), MB_OK | MB_ICONERROR);
                     nCount++;
                 }
+                TRACE("Accept Client return true\r\n");
                 // 客户端连接成功后，进入命令处理逻辑。
                 // 当前 dealCommand 里还没有真正解析命令，只是在循环 recv。
                 int nRet = pServer->dealCommand();
+                TRACE("deal commmand nRet = %d\r\n", nRet);
                 if (nRet > 0)
                 {
-                    nRet = ExcuteCmd(pServer->getPacket().sCmd);
+                    nRet = ExcuteCmd(nRet);
                     if (nRet != 0)
                     {
                         TRACE("执行命令失败：%d，ret = %d\r\n", pServer->getPacket().sCmd, nRet);

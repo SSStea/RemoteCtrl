@@ -159,11 +159,17 @@ void CRemoteClientDlg::OnBnClickedBtnTest()
 {
 	// TODO: 在此添加控件通知处理程序代码
 	CClientSocket* pClient = CClientSocket::getInstance();
-	bool ret = pClient->bInitSocket("127.0.0.1");//TODO：返回值处理
-	if (!ret)
+	bool bRet = pClient->bInitSocket("127.0.0.1");//TODO：返回值处理
+	if (!bRet)
 	{
 		AfxMessageBox("网络初始化失败！");
+		return;
 	}
-	CPacket pack(1, NULL, 0);
-	pClient->bSend(pack);
+	CPacket pack(1981, NULL, 0);
+	bRet = pClient->bSend(pack);
+	TRACE("send ret = %d\r\n", bRet);
+	int nCmd = pClient->dealCommand();
+	TRACE("ack: %d\r\n", nCmd);
+
+	pClient->CloseSocket();
 }

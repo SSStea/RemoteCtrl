@@ -74,7 +74,7 @@ public:
 		{
 			sum += BYTE(strData[j]) & 0xFF;
 		}
-		if (sum = sSum)
+		if (sum == sSum)
 		{
 			nSize = pos;
 			return;
@@ -214,6 +214,7 @@ public:
 		int			cli_sz = sizeof(client_adr);
 
 		m_client = accept(m_ServSock, (sockaddr*)&client_adr, &cli_sz);
+		TRACE("m_client = %d\r\n", m_client);
 		if (m_client == -1)
 		{
 			return false;
@@ -231,6 +232,11 @@ public:
 		}
 
 		char* buffer = new char[BUFFER_SIZE];
+		if (buffer == NULL)
+		{
+			TRACE("内存不足");
+			return -2;
+		}
 		memset(buffer, 0, BUFFER_SIZE);
 		size_t index = 0;//指向当前buffer存储的数据的位置，值表示当前存储的总长度
 		while (true)
@@ -238,8 +244,10 @@ public:
 			size_t len = recv(m_client, buffer + index, BUFFER_SIZE - (int)index, 0);
 			if (len <= 0)
 			{
+				delete []buffer;
 				return -1;
 			}
+			TRACE("recv = %d\r\n", len);
 			index += len;//收到了数据更新位置，下次再收到数据从index开始存储
 			len = index;//将长度改为当前buffer的总长度
 			m_packet = CPacket((BYTE*)buffer, len);//将buffer解析，得到解析后的数据和长度组包
@@ -247,9 +255,11 @@ public:
 			{
 				memmove(buffer, buffer + len, BUFFER_SIZE - len);//将解析到的数据从buffer中移走
 				index -= len;//总长度减掉解析的数据长度
+				delete []buffer;
 				return m_packet.sCmd;
 			}
 		}
+		delete []buffer;
 		return -1;
 	}
 

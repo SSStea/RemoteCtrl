@@ -2,6 +2,7 @@
 #include "pch.h"
 #include "framework.h"
 #include <string>
+#include <vector>
 
 #pragma pack(push)
 #pragma pack(1)
@@ -75,7 +76,7 @@ public:
 		{
 			sum += BYTE(strData[j]) & 0xFF;
 		}
-		if (sum = sSum)
+		if (sum == sSum)
 		{
 			nSize = pos;
 			return;
@@ -183,6 +184,12 @@ public:
 	// 2. 客户端连接服务器
 	bool bInitSocket(const std::string& strIPAddress)
 	{
+		if (m_Sock != INVALID_SOCKET)
+		{
+			CloseSocket();
+		}
+		m_Sock = socket(PF_INET, SOCK_STREAM, 0);
+
 		if (m_Sock == -1)
 		{
 			return false;
@@ -223,7 +230,7 @@ public:
 			return -1;
 		}
 
-		char* buffer = new char[BUFFER_SIZE];
+		char* buffer = m_vecBuffer.data();
 		memset(buffer, 0, BUFFER_SIZE);
 		size_t index = 0;//指向当前buffer存储的数据的位置，值表示当前存储的总长度
 		while (true)
@@ -257,6 +264,7 @@ public:
 	}
 	bool bSend(CPacket& pack)
 	{
+		TRACE("m_Sock = %d\r\n", m_Sock);
 		if (m_Sock == -1)
 		{
 			return false;
@@ -284,23 +292,33 @@ public:
 		return false;
 	}
 
+	CPacket& getPacket()
+	{
+		return m_packet;
+	}
+
+	void CloseSocket()
+	{
+		closesocket(m_Sock);
+		m_Sock = INVALID_SOCKET;
+	}
+
 private:
-	SOCKET	m_Sock;
-	CPacket m_packet;
+	SOCKET				m_Sock;
+	CPacket				m_packet;
+	std::vector<char>	m_vecBuffer;
 
 	// 构造函数私有化，是单例模式的关键：
 	// 外部不能直接 new CServSocket，只能通过 getInstance 获取唯一对象。
 	CClientSocket()
 	{
-
 		// Windows 下使用 socket 前，必须先调用 WSAStartup 初始化 Winsock 环境。
 		if (!bInitSockEnv())
 		{
 			MessageBox(NULL, _T("无法初始化套接字环境，请检查网络设置"), _T("初始化错误！"), MB_OK | MB_ICONERROR);
 			exit(0);
 		}
-
-		m_Sock = socket(PF_INET, SOCK_STREAM, 0);
+		m_vecBuffer.resize(BUFFER_SIZE);
 	}
 
 	// 拷贝构造和赋值运算符放在 private 中，目的是禁止外部复制单例对象。
