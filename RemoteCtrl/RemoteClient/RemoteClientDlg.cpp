@@ -362,10 +362,10 @@ void CRemoteClientDlg::OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult)
 void CRemoteClientDlg::OnDownloadFile()
 {
 	// TODO: 在此添加命令处理程序代码
-	int nListSelected = m_List.GetSelectionMark();
-	CString strFileName = m_List.GetItemText(nListSelected, 0);
-	HTREEITEM hSelected = m_Tree.GetSelectedItem();
-	CString strFilePath = GetPath(hSelected) + strFileName;
+	int nListSelected = m_List.GetSelectionMark();//获取List控件选择的Item
+	CString strFileName = m_List.GetItemText(nListSelected, 0);//Item的第一个信息是文件名字
+	HTREEITEM hSelected = m_Tree.GetSelectedItem();//获取Tree控件选择的Item，是路径
+	CString strFilePath = GetPath(hSelected) + strFileName;//将文件名与文件的存储路径拼起来获得文件的绝对路径
 	TRACE("%s\r\n", LPCSTR(strFilePath));
 
 	CFileDialog cFileDlg(FALSE, 
@@ -373,7 +373,7 @@ void CRemoteClientDlg::OnDownloadFile()
 		strFileName, 
 		OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, 
 		NULL, 
-		this);
+		this);//开启一个保存文件的Dialog
 
 	if (cFileDlg.DoModal() == IDOK)
 	{
@@ -384,36 +384,40 @@ void CRemoteClientDlg::OnDownloadFile()
 			return;
 		}
 
-		int nRetCmd = SendCommandPacket(4, false, (BYTE*)(LPCSTR)strFilePath, strFilePath.GetLength());
-		if (nRetCmd < 0)
-		{
-			AfxMessageBox("执行下载命令失败！！");
-			TRACE("ret = %d\r\n", nRetCmd);
-			return;
-		}
-
 		CClientSocket* pClient = CClientSocket::getInstance();
-		long long lFileLength = *(long long*)pClient->getPacket().strData.c_str();
-		if (lFileLength == 0)
+		do
 		{
-			AfxMessageBox("文件长度为零，或着无法读取文件！！");
-			return;
-		}
-
-		long long lCount = 0;
-		while (lCount < lFileLength)
-		{
-			nRetCmd = pClient->dealCommand();
+			int nRetCmd = SendCommandPacket(4, false, (BYTE*)(LPCSTR)strFilePath, strFilePath.GetLength());
 			if (nRetCmd < 0)
 			{
-				AfxMessageBox("传输失败！！");
-				TRACE("传输失败：ret = %d", nRetCmd);
-				return;
+				AfxMessageBox("执行下载命令失败！！");
+				TRACE("ret = %d\r\n", nRetCmd);
+				break;
 			}
-			fwrite(pClient->getPacket().strData.c_str(), 1,
-				pClient->getPacket().strData.size(), pFile);
-			lCount += pClient->getPacket().strData.size();
-		}
+
+			long long lFileLength = *(long long*)pClient->getPacket().strData.c_str();
+			if (lFileLength == 0)
+			{
+				AfxMessageBox("文件长度为零，或着无法读取文件！！");
+				break;
+			}
+
+			long long lCount = 0;
+			while (lCount < lFileLength)
+			{
+				nRetCmd = pClient->dealCommand();
+				if (nRetCmd < 0)
+				{
+					AfxMessageBox("传输失败！！");
+					TRACE("传输失败：ret = %d", nRetCmd);
+					break;
+				}
+				fwrite(pClient->getPacket().strData.c_str(), 1,
+					pClient->getPacket().strData.size(), pFile);
+				lCount += pClient->getPacket().strData.size();
+			}
+		}while (false);
+
 		fclose(pFile);
 		pClient->CloseSocket();
 	}
