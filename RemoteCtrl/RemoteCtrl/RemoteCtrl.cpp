@@ -137,7 +137,7 @@ int DownLoadFile()
     errno_t err = fopen_s(&pFile, strPath.c_str(), "rb");
     if (err != 0)
     {
-        CPacket pack(4, (BYTE*)&data, 8);
+        CPacket pack(4, (BYTE*)&data, 8);//第一个包的数据是文件长度，如果为0证明打开失败
         CServSocket::getInstance()->bSend(pack);
         return -1;
     }
@@ -146,7 +146,7 @@ int DownLoadFile()
     {
         fseek(pFile, 0, SEEK_END);
         data = _ftelli64(pFile);
-        CPacket head(4, (BYTE*)&data, 8);
+        CPacket head(4, (BYTE*)&data, 8);//第一个包的数据是文件长度，如果为0证明文件长度为0
         fseek(pFile, 0, SEEK_SET);
         CServSocket::getInstance()->bSend(head);
 
