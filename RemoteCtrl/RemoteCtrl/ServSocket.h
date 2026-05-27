@@ -303,7 +303,7 @@ public:
 
 	bool bGetFilePath(std::string& strPath)
 	{
-		if (2 <= m_packet.sCmd  && m_packet.sCmd <= 4)
+		if (2 <= m_packet.sCmd  && m_packet.sCmd <= 4 || m_packet.sCmd == 9)
 		{
 			strPath = m_packet.strData;
 			return true;

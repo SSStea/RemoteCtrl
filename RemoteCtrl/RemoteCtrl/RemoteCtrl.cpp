@@ -395,6 +395,22 @@ int UnLockMachine()
 	return 0;
 }
 
+int DeleteLocalFile()
+{
+	std::string strPath;
+	CServSocket::getInstance()->bGetFilePath(strPath);
+    TCHAR sPath[MAX_PATH] = _T("");
+    //mbstowcs(sPath, strPath.c_str(), strPath.size());中文容易乱码
+    MultiByteToWideChar(CP_ACP, 0, strPath.c_str(), strPath.size(), sPath, sizeof(sPath) / sizeof(TCHAR));
+	DeleteFile(sPath);
+
+    CPacket pack(9, NULL, 0);
+    bool bRet = CServSocket::getInstance()->bSend(pack);
+    TRACE("ret = %d", bRet);
+
+    return 0;
+}
+
 int TestConnect()
 {
     CPacket pack(1981, NULL, 0);
@@ -433,6 +449,9 @@ int ExcuteCmd(int nCmd)
 	case 8:
         nRet = UnLockMachine();
 		break;
+    case 9:
+        nRet = DeleteLocalFile();
+        break;
     case 1981:
         nRet = TestConnect();
         break;
