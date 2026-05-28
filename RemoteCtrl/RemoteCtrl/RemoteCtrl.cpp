@@ -290,13 +290,14 @@ int SendScreen()
         return -1;
     }
     IStream* pStream = NULL;//建立一个内存流，利用Save的重载函数
-    HRESULT hRet = CreateStreamOnHGlobal(hMem, TRUE, &pStream);
+    HRESULT hRet = CreateStreamOnHGlobal(hMem, TRUE, &pStream);//将内存流创建在全局可移动的内存上
     if(hRet == S_OK)
     {
-        screen.Save(pStream, Gdiplus::ImageFormatPNG);
+        screen.Save(pStream, Gdiplus::ImageFormatPNG);//将屏幕保存到内存流
         LARGE_INTEGER begin = { 0 };
         pStream->Seek(begin, STREAM_SEEK_SET, NULL);//将内存流的指针设置到流的头部
-        PBYTE pData = (PBYTE)GlobalLock(hMem);//必须要lock，不然hMem和pStream是分离的，读不到数据
+        PBYTE pData = (PBYTE)GlobalLock(hMem);//将hMem与pStream lock传递给pData，
+                                                //不lock hMem和pStream是分离的，读不到数据
         SIZE_T nSize = GlobalSize(hMem);
         CPacket pack(6, pData, nSize);//将读出来的内存数据打包
         CServSocket::getInstance()->bSend(pack);

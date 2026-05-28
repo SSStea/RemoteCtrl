@@ -25,6 +25,8 @@ public:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 
 private:
+	static void threadEntryForWatchData(void* arg);
+	void threadWatchData();
 	static void threadEntryForDownload(void* arg);
 	void threadDownFile();
 	void LoadFileCurrent();
@@ -41,6 +43,8 @@ private:
 protected:
 	HICON m_hIcon;
 	CStatusDlg m_dlgStatus;
+	CImage m_image;//图像缓存
+	bool m_bIsFull;//缓存是否有数据 true表示有 false表示没有
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
