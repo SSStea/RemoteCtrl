@@ -2,6 +2,9 @@
 // RemoteClientDlg.h: 头文件
 //
 #include "ClientSocket.h"
+#include "StatusDlg.h"
+
+#define WM_SEND_PACKET (WM_USER + 1) //1 ==> 定义发送数据包的消息
 
 #pragma once
 
@@ -22,6 +25,8 @@ public:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 
 private:
+	static void threadEntryForDownload(void* arg);
+	void threadDownFile();
 	void LoadFileCurrent();
 	void LoadFileInfo();
 	CString GetPath(HTREEITEM hTree);
@@ -35,6 +40,7 @@ private:
 // 实现
 protected:
 	HICON m_hIcon;
+	CStatusDlg m_dlgStatus;
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
@@ -46,7 +52,9 @@ public:
 	afx_msg void OnBnClickedBtnTest();
 	DWORD m_server_address;
 	CString m_nPort;
+	// 获取文件目录信息
 	afx_msg void OnBnClickedBtnFileinfo();
+	// 单双击显示目录
 	CTreeCtrl m_Tree;
 	afx_msg void OnNMDblclkTreeDir(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnNMClickTreeDir(NMHDR* pNMHDR, LRESULT* pResult);
@@ -56,4 +64,6 @@ public:
 	afx_msg void OnDownloadFile();
 	afx_msg void OnDeleteFile();
 	afx_msg void OnRunFile();
+
+	afx_msg LRESULT OnSendPacket(WPARAM wParam, LPARAM lParam);//2 ==> 定义自定义消息响应函数
 };
