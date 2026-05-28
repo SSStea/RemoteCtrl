@@ -144,8 +144,11 @@ BOOL CRemoteClientDlg::OnInitDialog()
 	m_server_address = 0x7F000001;
 	m_nPort = _T("9527");
 	UpdateData(FALSE);
+
 	m_dlgStatus.Create(IDD_DLG_STATUS, this);
 	m_dlgStatus.ShowWindow(SW_HIDE);
+
+	m_bIsFull = false;
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -393,6 +396,7 @@ void CRemoteClientDlg::OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult)
 	}
 }
 
+
 void CRemoteClientDlg::threadEntryForDownload(void* arg)
 {
 	CRemoteClientDlg* thiz = (CRemoteClientDlg*)arg;
@@ -530,4 +534,45 @@ LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)//4 ==> 实�
 	CString strFilePath = (LPCSTR)lParam;
 	int nRetCmd = SendCommandPacket(wParam >> 1, wParam & 1, (BYTE*)(LPCSTR)strFilePath, strFilePath.GetLength());
 	return nRetCmd;
+}
+
+void CRemoteClientDlg::threadEntryForWatchData(void* arg)
+{
+	CRemoteClientDlg* thiz = (CRemoteClientDlg*)arg;
+	thiz->threadWatchData();
+	_endthread();
+}
+
+void CRemoteClientDlg::threadWatchData()
+{
+	CClientSocket* pClient = NULL;
+
+	do
+	{
+		pClient = CClientSocket::getInstance();
+	} while (pClient == NULL);//用do..while确保网络连接肯定拿的到
+
+	for (;;)//等价于while(true)
+	{
+		CPacket pack(6, NULL, 0);
+		bool bRet = pClient->bSend(pack);
+		if (bRet)
+		{
+			int nRetCmd = pClient->dealCommand();//拿数据
+			if (nRetCmd == 6)
+			{
+				if(!m_bIsFull)
+				{
+					BYTE* pData = (BYTE*)pClient->getPacket().strData.c_str();
+					//TODO: 存入图像缓存
+					m_bIsFull = true;
+				}
+			}
+		}
+		else
+		{
+			Sleep(1);
+		}
+		
+	}
 }
