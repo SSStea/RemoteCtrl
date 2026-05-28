@@ -283,7 +283,6 @@ void CRemoteClientDlg::LoadFileInfo()
 
 	pFILEINFO pInfo = (pFILEINFO)CClientSocket::getInstance()->getPacket().strData.c_str();
 	CClientSocket* pClient = CClientSocket::getInstance();
-	int nCount = 0;
 	while (pInfo->bHasNext)//向服务端请求目录时可能是对某个空目录请求，这样就不必处理了
 	{
 		TRACE("[%s] is dir %d\r\n", pInfo->szFileName, pInfo->bIsDirectory);
@@ -309,7 +308,6 @@ void CRemoteClientDlg::LoadFileInfo()
 		{
 			m_List.InsertItem(0, pInfo->szFileName);
 		}
-		nCount++;
 		int nRetCmd = pClient->dealCommand();
 		TRACE("ack: %d\r\n", nRetCmd);
 		if (nRetCmd < 0)
@@ -320,7 +318,6 @@ void CRemoteClientDlg::LoadFileInfo()
 	}
 
 	pClient->CloseSocket();
-	TRACE("Count = %d\r\n", nCount);
 }
 
 CString CRemoteClientDlg::GetPath(HTREEITEM hTree)
@@ -454,7 +451,6 @@ void CRemoteClientDlg::OnDownloadFile()
 		fclose(pFile);
 		pClient->CloseSocket();
 	}
-	//TODO：大文件传输需要额外处理
 }
 
 void CRemoteClientDlg::OnDeleteFile()
