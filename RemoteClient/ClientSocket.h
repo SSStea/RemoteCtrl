@@ -247,22 +247,26 @@ public:
 		}
 
 		char* buffer = m_vecBuffer.data();
-		memset(buffer, 0, BUFFER_SIZE);
-		size_t index = 0;//指向当前buffer存储的数据的位置，值表示当前存储的总长度
+		static size_t index = 0;
+		//定义为静态全局变量：服务端可能一次性发来多个包的数据，底下的处理逻辑是每解析一个包就返回，
+		//	并将处理完的数据从buffer中移除、修改index的索引值，因此index不能在每次处理命令时都为0，
+		//	这样会导致每次存储数据都从0开始存储，从而覆盖之前服务端发来的但没有处理完的数据
+		//指向当前buffer存储的数据的位置，值表示当前存储的总长度
 		while (true)
 		{
 			size_t len = recv(m_Sock, buffer + index, BUFFER_SIZE - (int)index, 0);
-			if (len <= 0)
+			if (len <= 0 && index == 0)//表示没读到并且缓冲区里没数据
 			{
 				return -1;
 			}
-			index += len;//收到了数据更新位置，下次再收到数据从index开始存储
-			len = index;//将长度改为当前buffer的总长度
-			m_packet = CPacket((BYTE*)buffer, len);//将buffer解析，得到解析后的数据和长度
+			index += len;//更新数据在buffer中的存储索引值index：将recv的数据长度len加到上一次的index
+			len = index;//将buffer存储的数据长度改为当前buffer存储数据的索引位置
+			m_packet = CPacket((BYTE*)buffer, len);
+			//按引用传入当前数据的长度len，将buffer解析，将数据封装为Packet并返回封装了的数据的长度len
 			if (len > 0)//如果解析到了数据
 			{
 				memmove(buffer, buffer + len, BUFFER_SIZE - len);//将解析到的数据从buffer中移走
-				index -= len;//总长度减掉解析的数据长度
+				index -= len;//变更数据在buffer中的存储索引值index，减掉解析到的数据长度len
 				return m_packet.sCmd;
 			}
 		}
@@ -335,6 +339,7 @@ private:
 			exit(0);
 		}
 		m_vecBuffer.resize(BUFFER_SIZE);
+		memset(m_vecBuffer.data(), 0, BUFFER_SIZE);
 	}
 
 	// 拷贝构造和赋值运算符放在 private 中，目的是禁止外部复制单例对象。
