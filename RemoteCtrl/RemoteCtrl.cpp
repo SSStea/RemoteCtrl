@@ -93,8 +93,6 @@ int MakeDirecoryInfo()
         OutputDebugString(_T("未找到任何文件！"));
         return -3;
     }
-
-    int nCount = 0;
     do {
         FILEINFO fInfo;
         fInfo.bIsDirectory = ((fData.attrib & _A_SUBDIR) != 0);
@@ -104,9 +102,7 @@ int MakeDirecoryInfo()
 
         CPacket pack(2, (BYTE*)&fInfo, sizeof(fInfo));
         CServSocket::getInstance()->bSend(pack);//获取一个文件就发送一个
-        nCount++;
     } while (!_findnext(hFind, &fData));
-    TRACE("Server Count = %d\r\n", nCount);
     
     FILEINFO fInfo;
     fInfo.bHasNext = FALSE;//告诉控制端没有下一个文件了，不必继续等待
