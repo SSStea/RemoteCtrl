@@ -25,6 +25,7 @@ CWatchDialog::~CWatchDialog()
 void CWatchDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_WATCH, m_picture);
 }
 
 
@@ -54,7 +55,20 @@ void CWatchDialog::OnTimer(UINT_PTR nIDEvent)
 		CRemoteClientDlg* pParent = (CRemoteClientDlg*) GetParent();
 		if (pParent->bIsFull())
 		{
-
+			CRect rect;
+			m_picture.GetWindowRect(rect);
+			//pParent->getImage().BitBlt(m_picture.GetDC()->GetSafeHdc(), 0, 0, SRCCOPY);
+			pParent->getImage().StretchBlt(
+				m_picture.GetDC()->GetSafeHdc(), 
+				0, 
+				0, 
+				rect.Width(), 
+				rect.Height(), 
+				SRCCOPY
+			);
+			m_picture.InvalidateRect(NULL);
+			pParent->getImage().Destroy();
+			pParent->setImageStatus();
 		}
 	}
 	CDialog::OnTimer(nIDEvent);

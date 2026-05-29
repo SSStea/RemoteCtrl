@@ -533,8 +533,24 @@ void CRemoteClientDlg::OnRunFile()
 
 LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)//4 ==> 实现消息响应函数
 {
-	CString strFilePath = (LPCSTR)lParam;
-	int nRetCmd = SendCommandPacket(wParam >> 1, wParam & 1, (BYTE*)(LPCSTR)strFilePath, strFilePath.GetLength());
+	int nCmd = wParam >> 1;
+	int nRetCmd = 0;
+	switch (nCmd)
+	{
+	case 4:
+		{
+			CString strFilePath = (LPCSTR)lParam;
+			nRetCmd = SendCommandPacket(nCmd, wParam & 1, (BYTE*)(LPCSTR)strFilePath, strFilePath.GetLength());
+		}
+		break;
+	case 6:
+		nRetCmd = SendCommandPacket(nCmd, wParam & 1, NULL, 0);
+		break;
+	default:
+		nRetCmd = -1;
+		break;
+	}
+	
 	return nRetCmd;
 }
 
@@ -547,59 +563,63 @@ void CRemoteClientDlg::threadEntryForWatchData(void* arg)
 
 void CRemoteClientDlg::threadWatchData()
 {
-	CClientSocket* pClient = NULL;
+	Sleep(50);
 
+	CClientSocket* pClient = NULL;
 	do
 	{
 		pClient = CClientSocket::getInstance();
 	} while (pClient == NULL);//用do..while确保网络连接肯定拿的到
 
+	ULONGLONG ulTick = GetTickCount64();
 	for (;;)//等价于while(true)
 	{
-		CPacket pack(6, NULL, 0);
-		bool bRet = pClient->bSend(pack);
-		if (bRet)
+		if (GetTickCount64() - ulTick < 50)
 		{
-			int nRetCmd = pClient->dealCommand();//拿数据
+			Sleep(GetTickCount64() - ulTick);
+		}
+
+		if (!m_bIsFull)//更新数据到缓存
+		{
+			int nRetCmd = SendMessage(WM_SEND_PACKET, 6 << 1 | 1);
 			if (nRetCmd == 6)
 			{
-				if(!m_bIsFull)//更新数据到缓存
+				BYTE* pData = (BYTE*)pClient->getPacket().strData.c_str();
+				IStream* pStream = NULL;
+				HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);
+				if (hMem == NULL)
 				{
-					BYTE* pData = (BYTE*)pClient->getPacket().strData.c_str();
-					IStream* pStream = NULL;
-					HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);
-					if (hMem == NULL)
-					{
-						TRACE("内存不足！！");
-						Sleep(1);
-						continue;
-					}
-					HRESULT hRet = CreateStreamOnHGlobal(hMem, TRUE, &pStream);
-					if (hRet == S_OK)
-					{
-						ULONG  ulLength = 0;
-						pStream->Write(pData, (ULONG)pClient->getPacket().strData.size(), &ulLength);
-						LARGE_INTEGER begin = { 0 };
-						pStream->Seek(begin, STREAM_SEEK_SET, NULL);
-						m_image.Load(pStream);
-						m_bIsFull = true;
-					}
+					TRACE("内存不足！！");
+					Sleep(1);
+					continue;
 				}
+				HRESULT hRet = CreateStreamOnHGlobal(hMem, TRUE, &pStream);
+				if (hRet == S_OK)
+				{
+					ULONG  ulLength = 0;
+					pStream->Write(pData, (ULONG)pClient->getPacket().strData.size(), &ulLength);
+					LARGE_INTEGER begin = { 0 };
+					pStream->Seek(begin, STREAM_SEEK_SET, NULL);
+					m_image.Load(pStream);
+					m_bIsFull = true;
+				}
+			}
+			else
+			{
+				Sleep(1);
 			}
 		}
 		else
 		{
 			Sleep(1);
 		}
-		
 	}
 }
 
 void CRemoteClientDlg::OnBnClickedBtnStartWatch()
 {
-	// TODO: 在此添加控件通知处理程序代码
-	_beginthread(CRemoteClientDlg::threadEntryForWatchData, 0, this);
 	CWatchDialog dlg(this);
+	_beginthread(CRemoteClientDlg::threadEntryForWatchData, 0, this);
 	dlg.DoModal();//模态弹窗
 }
 

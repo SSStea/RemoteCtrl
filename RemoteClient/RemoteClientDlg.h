@@ -50,6 +50,11 @@ public:
 		return m_image;
 	}
 
+	void setImageStatus(bool isFull = false)
+	{
+		m_bIsFull = isFull;
+	}
+
 // 实现
 protected:
 	HICON m_hIcon;
