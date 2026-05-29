@@ -212,6 +212,7 @@ int MouseEvent()
             break;
         }
 
+        TRACE("flag = %08x, x = %d, y = %d\r\n", nFlag, mouse.ptXY.x, mouse.ptXY.y);
         switch (nFlag)
         {
         case 0x21://左键双击
@@ -363,6 +364,7 @@ unsigned _stdcall threadLockDlg(void* arg)
     }
 
 	::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_SHOW);
+    ClipCursor(NULL);
 	ShowCursor(TRUE);
     dlg.DestroyWindow();
 
