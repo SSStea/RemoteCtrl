@@ -3,6 +3,7 @@
 //
 #include "ClientSocket.h"
 #include "StatusDlg.h"
+#include "WatchDialog.h"
 
 #define WM_SEND_PACKET (WM_USER + 1) //1 ==> 定义发送数据包的消息
 
@@ -39,6 +40,16 @@ private:
 	//返回值是命令号，如果小于0则错误
 	int SendCommandPacket(int nCmd, bool bAutoClose = true, BYTE* pData = NULL, size_t nLength = 0);
 
+public:
+	bool bIsFull() const
+	{
+		return m_bIsFull;
+	}
+	CImage& getImage()
+	{
+		return m_image;
+	}
+
 // 实现
 protected:
 	HICON m_hIcon;
@@ -70,4 +81,6 @@ public:
 	afx_msg void OnRunFile();
 
 	afx_msg LRESULT OnSendPacket(WPARAM wParam, LPARAM lParam);//2 ==> 定义自定义消息响应函数
+	afx_msg void OnBnClickedBtnStartWatch();
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
 };
