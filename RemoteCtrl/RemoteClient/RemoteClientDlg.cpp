@@ -543,6 +543,9 @@ LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)//4 ==> 实�
 			nRetCmd = SendCommandPacket(nCmd, wParam & 1, (BYTE*)(LPCSTR)strFilePath, strFilePath.GetLength());
 		}
 		break;
+	case 5:
+		nRetCmd = SendCommandPacket(nCmd, wParam & 1, (BYTE*)lParam, sizeof(MOUSEEVENT));
+		break;
 	case 6:
 		nRetCmd = SendCommandPacket(nCmd, wParam & 1, NULL, 0);
 		break;
@@ -574,7 +577,7 @@ void CRemoteClientDlg::threadWatchData()
 	ULONGLONG ulTick = GetTickCount64();
 	for (;;)//等价于while(true)
 	{
-		if (GetTickCount64() - ulTick < 50)
+		if (GetTickCount64() - ulTick < 150)
 		{
 			Sleep(GetTickCount64() - ulTick);
 		}

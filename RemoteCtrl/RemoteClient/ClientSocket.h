@@ -237,7 +237,7 @@ public:
 		return true;
 	}
 
-#define BUFFER_SIZE 409600
+#define BUFFER_SIZE 2048000
 	// 处理客户端发来的命令。
 	int dealCommand()
 	{
