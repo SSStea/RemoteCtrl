@@ -105,6 +105,8 @@ BEGIN_MESSAGE_MAP(CRemoteClientDlg, CDialogEx)
 	ON_COMMAND(ID_DELETE_FILE, &CRemoteClientDlg::OnDeleteFile)
 	ON_COMMAND(ID_RUN_FILE, &CRemoteClientDlg::OnRunFile)
 	ON_MESSAGE(WM_SEND_PACKET, &CRemoteClientDlg::OnSendPacket)//3 ==> 注册消息：告诉系统消息Id对应的处理函数
+	ON_BN_CLICKED(IDC_BTN_START_WATCH, &CRemoteClientDlg::OnBnClickedBtnStartWatch)
+	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 
@@ -561,11 +563,27 @@ void CRemoteClientDlg::threadWatchData()
 			int nRetCmd = pClient->dealCommand();//拿数据
 			if (nRetCmd == 6)
 			{
-				if(!m_bIsFull)
+				if(!m_bIsFull)//更新数据到缓存
 				{
 					BYTE* pData = (BYTE*)pClient->getPacket().strData.c_str();
-					//TODO: 存入图像缓存
-					m_bIsFull = true;
+					IStream* pStream = NULL;
+					HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);
+					if (hMem == NULL)
+					{
+						TRACE("内存不足！！");
+						Sleep(1);
+						continue;
+					}
+					HRESULT hRet = CreateStreamOnHGlobal(hMem, TRUE, &pStream);
+					if (hRet == S_OK)
+					{
+						ULONG  ulLength = 0;
+						pStream->Write(pData, (ULONG)pClient->getPacket().strData.size(), &ulLength);
+						LARGE_INTEGER begin = { 0 };
+						pStream->Seek(begin, STREAM_SEEK_SET, NULL);
+						m_image.Load(pStream);
+						m_bIsFull = true;
+					}
 				}
 			}
 		}
@@ -575,4 +593,19 @@ void CRemoteClientDlg::threadWatchData()
 		}
 		
 	}
+}
+
+void CRemoteClientDlg::OnBnClickedBtnStartWatch()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	_beginthread(CRemoteClientDlg::threadEntryForWatchData, 0, this);
+	CWatchDialog dlg(this);
+	dlg.DoModal();//模态弹窗
+}
+
+void CRemoteClientDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	// TODO: 在此添加消息处理程序代码和/或调用默认值
+
+	CDialogEx::OnTimer(nIDEvent);
 }
