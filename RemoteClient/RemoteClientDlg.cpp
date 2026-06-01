@@ -143,7 +143,7 @@ BOOL CRemoteClientDlg::OnInitDialog()
 
 	// TODO: 在此添加额外的初始化代码
 	UpdateData();
-	m_server_address = 0x7F000001;
+	m_server_address = 0xAC10D01C;//0x7F000001;
 	m_nPort = _T("9527");
 	UpdateData(FALSE);
 
@@ -575,7 +575,7 @@ void CRemoteClientDlg::threadWatchData()
 	} while (pClient == NULL);//用do..while确保网络连接肯定拿的到
 
 	ULONGLONG ulTick = GetTickCount64();
-	for (;;)//等价于while(true)
+	while(!m_bIsClosed)//
 	{
 		if (GetTickCount64() - ulTick < 150)
 		{
@@ -603,6 +603,10 @@ void CRemoteClientDlg::threadWatchData()
 					pStream->Write(pData, (ULONG)pClient->getPacket().strData.size(), &ulLength);
 					LARGE_INTEGER begin = { 0 };
 					pStream->Seek(begin, STREAM_SEEK_SET, NULL);
+					if((HBITMAP)m_image != NULL)
+					{
+						m_image.Destroy();
+					}
 					m_image.Load(pStream);
 					m_bIsFull = true;
 				}
@@ -620,10 +624,14 @@ void CRemoteClientDlg::threadWatchData()
 }
 
 void CRemoteClientDlg::OnBnClickedBtnStartWatch()
-{
+{//由于每点击一次都会开启一个线程，新旧线程m_image会有冲突，所以用m_bIsClosed表示上次的监视线程是否	
+//已经关闭，在threadWatchData线程函数中判断，如果已经关闭再次点击就不再进入老线程
+	m_bIsClosed = false;
 	CWatchDialog dlg(this);
-	_beginthread(CRemoteClientDlg::threadEntryForWatchData, 0, this);
+	HANDLE hThread = (HANDLE)_beginthread(CRemoteClientDlg::threadEntryForWatchData, 0, this);
 	dlg.DoModal();//模态弹窗
+	m_bIsClosed = true;
+	WaitForSingleObject(hThread, 500);
 }
 
 void CRemoteClientDlg::OnTimer(UINT_PTR nIDEvent)

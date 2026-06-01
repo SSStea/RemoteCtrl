@@ -61,6 +61,7 @@ protected:
 	CStatusDlg m_dlgStatus;
 	CImage m_image;//图像缓存
 	bool m_bIsFull;//缓存是否有数据 true表示有 false表示没有
+	bool m_bIsClosed;//监视是否关闭
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
