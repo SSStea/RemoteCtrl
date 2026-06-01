@@ -209,6 +209,7 @@ int MouseEvent()
             nFlag |= 0x80;
             break;
         default:
+
             break;
         }
 
@@ -259,7 +260,7 @@ int MouseEvent()
             break;
         }
 
-        CPacket pack(4, NULL, 0);
+        CPacket pack(5, NULL, 0);
         CServSocket::getInstance()->bSend(pack);
     }
     else
@@ -282,7 +283,7 @@ int SendScreen()
     int nHeight = GetDeviceCaps(hScreen, VERTRES);//得到高度
 
     screen.Create(nWidth, nHeight, nBitPixel);
-    BitBlt(screen.GetDC(), 0, 0, 1920, 1020, hScreen, 0, 0, SRCCOPY);
+    BitBlt(screen.GetDC(), 0, 0, nWidth, nHeight, hScreen, 0, 0, SRCCOPY);
     ReleaseDC(NULL, hScreen);
 
     HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);//获取全局可移动的内存
