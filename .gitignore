@@ -72,3 +72,5 @@ sender/**/Debug/
 sender/**/Release/
 
 RemoteCtrl/RemoteCtrl/RemoteCtrl.aps
+RemoteCtrl/RemoteClient/RemoteClient.aps
+RemoteCtrl/Windows.iso
