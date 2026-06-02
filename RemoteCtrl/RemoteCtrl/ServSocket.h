@@ -354,13 +354,12 @@ private:
 	}
 
 	// 拷贝构造和赋值运算符放在 private 中，目的是禁止外部复制单例对象。
-	CServSocket(const CServSocket&) {}
-	CServSocket& operator=(const CServSocket& ss)
+	CServSocket(const CServSocket& ss) 
 	{
 		m_ServSock = ss.m_ServSock;
 		m_client = ss.m_client;
-		return *this;
 	}
+	CServSocket& operator=(const CServSocket& ss){}
 
 	~CServSocket()
 	{
