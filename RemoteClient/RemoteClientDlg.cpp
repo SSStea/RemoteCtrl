@@ -547,6 +547,8 @@ LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)//4 ==> å®žç
 		nRetCmd = SendCommandPacket(nCmd, wParam & 1, (BYTE*)lParam, sizeof(MOUSEEVENT));
 		break;
 	case 6:
+	case 7:
+	case 8:
 		nRetCmd = SendCommandPacket(nCmd, wParam & 1, NULL, 0);
 		break;
 	default:
