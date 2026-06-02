@@ -339,10 +339,24 @@ unsigned _stdcall threadLockDlg(void* arg)
     rect.bottom = GetSystemMetrics(SM_CYFULLSCREEN);
     rect.bottom = LONG(rect.bottom * 1.07);
     dlg.MoveWindow(rect);//设置窗口显示大小
-    dlg.SetWindowPos(&dlg.wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);//窗口置顶
+    CWnd* pText = dlg.GetDlgItem(IDC_STATIC);
+    if (pText)
+    {
+        CRect rtText;
+        pText->GetWindowRect(rtText);
+        int nWidth = rtText.Width();
+        int x = (rect.right - nWidth) / 2;
+        int nHeight = rtText.Height();
+        int y = (rect.bottom - nHeight) / 2;
+        pText->MoveWindow(x, y, rtText.Width(), rtText.Height());
+    }//将"联系管理员"文本置于屏幕正中央
 
-    ShowCursor(FALSE);//不显示鼠标
-    ::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_HIDE);//隐藏任务栏
+    //窗口置顶
+    dlg.SetWindowPos(&dlg.wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+    //不显示鼠标
+    ShowCursor(FALSE);
+    //隐藏任务栏
+    ::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_HIDE);
 
     dlg.GetWindowRect(rect);
     rect.left = 0;
@@ -364,9 +378,13 @@ unsigned _stdcall threadLockDlg(void* arg)
         }
     }
 
+    //显示任务栏
 	::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_SHOW);
+    //恢复鼠标活动范围限制
     ClipCursor(NULL);
+    //显示鼠标
 	ShowCursor(TRUE);
+    //销毁窗口
     dlg.DestroyWindow();
 
     _endthreadex(0);
