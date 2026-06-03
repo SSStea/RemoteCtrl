@@ -581,7 +581,7 @@ void CRemoteClientDlg::threadWatchData()
 	{
 		if (GetTickCount64() - ulTick < 150)
 		{
-			Sleep(GetTickCount64() - ulTick);
+			Sleep(DWORD(GetTickCount64() - ulTick));
 		}
 
 		if (!m_bIsFull)//更新数据到缓存
