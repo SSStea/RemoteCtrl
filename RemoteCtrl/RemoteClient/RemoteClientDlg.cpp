@@ -236,6 +236,13 @@ void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 		}
 		dr.push_back(strDrivers[i]);
 	}
+	if (dr.size() > 0)
+	{
+		dr.push_back(':');
+		HTREEITEM hTemp = m_Tree.InsertItem(dr.c_str(), TVI_ROOT, TVI_LAST);
+		m_Tree.InsertItem("", hTemp, TVI_LAST);//对获取的所有驱动都插入一个空的子目录
+		dr.clear();
+	}
 }
 
 

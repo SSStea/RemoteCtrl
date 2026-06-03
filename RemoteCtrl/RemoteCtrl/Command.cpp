@@ -24,14 +24,14 @@ CCommand::CCommand():threadid(0)
 	for (int i = 0; data[i].nCmd != -1; i++)
 	{
 		//将数组结构体中的命令和对应命令处理函数的映射存到map表中
-		m_mapFuntion.insert(std::pair<int, CMDFUNC>(data[i].nCmd, data[i].func));
+		m_mapFunction.insert(std::pair<int, CMDFUNC>(data[i].nCmd, data[i].func));
 	}
 }
 
 int CCommand::ExcuteCmd(int nCmd, std::list<CPacket>& lstOutPacket, CPacket& inPacket)
 {
-	auto it = m_mapFuntion.find(nCmd);
-	if (it == m_mapFuntion.end())
+	auto it = m_mapFunction.find(nCmd);
+	if (it == m_mapFunction.end())
 	{
 		return -1;
 	}

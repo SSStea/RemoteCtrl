@@ -36,7 +36,7 @@ public:
 
 protected:
 	typedef int (CCommand::* CMDFUNC)(std::list<CPacket>&, CPacket&);//成员函数指针：命令处理函数
-	std::map<int, CMDFUNC> m_mapFuntion; //map表：从命令号和对应命令处理函数的映射
+	std::map<int, CMDFUNC> m_mapFunction; //map表：从命令号和对应命令处理函数的映射
 
 	CLockInfoDialog dlg;
 	unsigned int threadid;
@@ -57,7 +57,6 @@ protected:
                 strRes.push_back('A' + i - 1);
             }
         }
-        strRes.push_back(',');
         CPacket pack(1, (BYTE*)strRes.c_str(), strRes.size());//重载了一个打包用的构造函数
         lstOutPacket.push_back(pack);
 
@@ -158,8 +157,11 @@ protected:
 
             fclose(pFile);
         }
-        CPacket pack(4, NULL, 0);
-        lstOutPacket.push_back(pack);
+        else 
+        {
+			CPacket pack(4, (BYTE*)&data, 8);
+			lstOutPacket.push_back(pack);
+        }
 
         return 0;
     }
