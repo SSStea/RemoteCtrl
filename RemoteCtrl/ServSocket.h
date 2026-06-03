@@ -182,31 +182,6 @@ protected:
 		return send(m_client, pack.Data(), pack.Size(), 0) > 0;
 	}
 
-	bool bGetFilePath(std::string& strPath)
-	{
-		if (2 <= m_packet.sCmd  && m_packet.sCmd <= 4 || m_packet.sCmd == 9)
-		{
-			strPath = m_packet.strData;
-			return true;
-		}
-		return false;
-	}
-
-	bool bGetMouseEvent(MOUSEEVENT& mouse)
-	{
-		if (m_packet.sCmd == 5)
-		{
-			memcpy(&mouse, m_packet.strData.c_str(), sizeof(MOUSEEVENT));
-			return true;
-		}
-		return false;
-	}
-
-	CPacket& getPacket()
-	{
-		return m_packet;
-	}
-
 	void CloseClient()
 	{
 		if (m_client != INVALID_SOCKET)
