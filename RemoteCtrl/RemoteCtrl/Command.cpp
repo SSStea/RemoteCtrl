@@ -28,7 +28,7 @@ CCommand::CCommand():threadid(0)
 	}
 }
 
-int CCommand::ExcuteCmd(int nCmd)
+int CCommand::ExcuteCmd(int nCmd, std::list<CPacket>& lstOutPacket, CPacket& inPacket)
 {
 	auto it = m_mapFuntion.find(nCmd);
 	if (it == m_mapFuntion.end())
@@ -36,6 +36,6 @@ int CCommand::ExcuteCmd(int nCmd)
 		return -1;
 	}
 
-	return (this->*it->second)();
+	return (this->*it->second)(lstOutPacket, inPacket);
 	//迭代器it的second是类的成员函数指针
 }

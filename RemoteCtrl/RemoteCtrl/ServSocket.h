@@ -1,181 +1,10 @@
 ﻿#pragma once
 #include "pch.h"
 #include "framework.h"
+#include <list>
+#include "Packet.h"
 
-void Dump(BYTE* pData, size_t nSize);
-
-#pragma pack(push)
-#pragma pack(1)
-class CPacket
-{
-public:
-	CPacket():sHead(0), nLength(0), sCmd(0), sSum(0) {}
-
-	CPacket(const CPacket& packet)
-	{
-		sHead = packet.sHead;
-		nLength = packet.nLength;
-		sCmd = packet.sCmd;
-		strData = packet.strData;
-		sSum = packet.sSum;
-	}
-
-	CPacket& operator=(const CPacket& packet)
-	{
-		if (this == &packet)
-		{
-			return *this;
-		}
-		sHead = packet.sHead;
-		nLength = packet.nLength;
-		sCmd = packet.sCmd;
-		strData = packet.strData;
-		sSum = packet.sSum;
-	}
-
-	//解析包的构造函数
-	CPacket(const BYTE* pData, size_t& nSize)
-	{
-		size_t pos = 0;//代表目前数据解析到哪个位置
-		for (; pos < nSize; pos++)
-		{
-			if (*(WORD*)(pData + pos) == 0xFEFF)
-			{
-				sHead = *(WORD*)(pData + pos);
-				pos += 2;//解析完包头，位置到包头之后
-				break;
-			}
-		}
-		if (pos + 8 > nSize)//4：nLength，2：sCmd，2：sSum，后面就不会访问越界
-		{//包数据可能不全，或者包头未能全部接收到
-			nSize = 0;
-			return;
-		}
-		nLength = *(DWORD*)(pData + pos);
-		pos += 4;//解析完长度，位置到长度之后
-		if (nLength + pos > nSize)
-		{//包未完全接收到，就返回，解析失败
-			nSize = 0;
-			return;
-		}
-
-		sCmd = *(WORD*)(pData + pos);
-		pos += 2;//解析完控制命令，位置到命令之后
-
-		if(nLength > 4)
-		{
-			strData.resize(nLength - 2 - 2);//减掉sCmd和sSum的长度
-			memcpy((void*)strData.c_str(), pData + pos, nLength - 4);
-			pos += (nLength - 4);//解析完数据，位置到数据之后
-		}
-
-		sSum = *(WORD*)(pData + pos);
-		pos += 2;//解析完校验，位置到校验之后
-		WORD sum = 0;
-		for (size_t j = 0; j < strData.size(); j++)
-		{
-			sum += BYTE(strData[j]) & 0xFF;
-		}
-		if (sum == sSum)
-		{
-			nSize = pos;
-			return;
-		}
-		nSize = 0;
-	}
-
-	//构造包的构造函数
-	CPacket(WORD nCmd, const BYTE* pData, size_t nSize)
-	{
-		sHead = 0xFEFF;
-		nLength = (DWORD)nSize + 4;//数据长度+命令长度+校验长度
-		sCmd = nCmd;
-
-		if(nSize > 0)
-		{
-			strData.resize(nSize);
-			memcpy((void*)strData.c_str(), pData, nSize);
-		}
-		else
-		{
-			strData.clear();
-		}
-
-		sSum = 0;
-		for (size_t j = 0; j < strData.size(); j++)
-		{
-			sSum += BYTE(strData[j]) & 0xFF;
-		}
-	}
-
-	//获取包的大小
-	int Size()
-	{
-		return nLength + 6;
-	}
-
-	//获取包的数据
-	const char* Data()
-	{
-		strOut.resize(nLength + 6);
-		BYTE* pData = (BYTE*)strOut.c_str(); 
-		*(WORD*)pData = sHead;
-		pData += 2;
-
-		*(DWORD*)pData = nLength;
-		pData += 4;
-
-		*(WORD*)pData = sCmd;
-		pData += 2;
-
-		memcpy(pData, strData.c_str(), strData.size());
-		pData += strData.size();
-
-		*(WORD*)pData = sSum;
-
-		return strOut.c_str();
-	}
-
-	~CPacket()
-	{ }
-public:
-	WORD		sHead;		//包头：固定FE FF
-	DWORD		nLength;	//包长度：从控制命令->校验
-	WORD		sCmd;		//控制命令
-	std::string strData;	//包数据
-	WORD		sSum;		//校验
-	std::string strOut;		//整个包的数据
-};
-#pragma pack(pop)
-
-typedef struct MouseEvent
-{
-	MouseEvent()
-	{
-		nAction = 0;
-		nButton = -1;
-		ptXY.x	= 0;
-		ptXY.y	= 0;
-	}
-	WORD	nAction;	//点击 移动 双击
-	WORD	nButton;	//左键 右键 中键
-	POINT	ptXY;		//坐标
-}MOUSEEVENT, *pMOUSEEVENT;
-
-typedef struct file_info
-{
-	file_info()
-	{
-		bIsInvalid = FALSE;
-		bIsDirectory = -1;
-		bHasNext = TRUE;
-		memset(szFileName, 0, sizeof(szFileName));
-	}
-	BOOL bIsInvalid;            //是否无效：0否 1是
-	BOOL bIsDirectory;          //是否为目录：0否 1是
-	BOOL bHasNext;              //是否还有下一个文件：0无 1有
-	char szFileName[256];       //文件名
-}FILEINFO, * pFILEINFO;
+typedef void (*SOCKET_CALLBACK)(void*, int, std::list<CPacket>&, CPacket& );
 
 class CServSocket
 {
@@ -191,11 +20,65 @@ public:
 		return m_Instance;
 	}
 
+	int nRun(SOCKET_CALLBACK callback, void* arg, short sPort = 9527)
+	{
+		// 初始化监听 socket：创建地址、绑定 9527 端口、进入监听状态。
+		bool bRet = bInitSocket(sPort);
+		if (!bRet)
+		{
+			return -1;
+		}
+
+		std::list<CPacket> lstPacket;
+
+		m_callback = callback;
+		m_arg = arg;
+
+		// 统计 accept 客户端失败的次数，连续失败太多就结束程序
+		int nCount = 0;
+
+		// 服务端主循环。
+		// 只要单例对象还存在，就不断等待客户端接入并处理客户端命令。
+		while (getInstance() != NULL)
+		{
+			// 等待客户端连接。
+			// 如果没有客户端连接，bAcceptClient 内部的 accept 会阻塞等待。
+			if (!bAcceptClient())
+			{
+				if (nCount >= 3)
+				{
+					return -2;
+				}
+				nCount++;
+			}
+			TRACE("Accept Client return true\r\n");
+
+			// 客户端连接成功后，进入命令处理逻辑。
+			// 当前 dealCommand 里还没有真正解析命令，只是在循环 recv
+			int nRetCmd = dealCommand();
+			TRACE("deal commmand nRet = %d\r\n", nRetCmd);
+			if (nRetCmd > 0)
+			{
+				//解析到的命令通过回调函数执行
+				m_callback(m_arg, nRetCmd, lstPacket, m_packet);
+				while (lstPacket.size() > 0)
+				{
+					bSend(lstPacket.front());
+					lstPacket.pop_front();
+				}
+			}
+			CloseClient();
+		}
+
+		return 0;
+	}
+
+protected:
 	// 初始化服务端监听 socket：
 	// 1. 准备服务器地址
 	// 2. 绑定 IP 和端口
 	// 3. 开始监听客户端连接
-	bool bInitSocket()
+	bool bInitSocket(short sPort = 9527)
 	{
 		if (m_ServSock == -1)
 		{
@@ -203,12 +86,10 @@ public:
 		}
 
 		sockaddr_in serv_adr;
-
 		memset(&serv_adr, 0, sizeof(serv_adr));
-
 		serv_adr.sin_family = AF_INET;
 		serv_adr.sin_addr.s_addr = INADDR_ANY;
-		serv_adr.sin_port = htons(9527);
+		serv_adr.sin_port = htons(sPort);
 
 		if (bind(m_ServSock, (const sockaddr*)&serv_adr, sizeof(serv_adr)) == -1)
 		{
@@ -328,11 +209,16 @@ public:
 
 	void CloseClient()
 	{
-		closesocket(m_client);
-		m_client = INVALID_SOCKET;
+		if (m_client != INVALID_SOCKET)
+		{
+			closesocket(m_client);
+			m_client = INVALID_SOCKET;
+		}
 	}
 
 private:
+	SOCKET_CALLBACK m_callback;
+	void* m_arg;
 	SOCKET	m_client;
 	SOCKET	m_ServSock;
 	CPacket m_packet;
