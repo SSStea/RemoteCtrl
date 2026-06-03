@@ -91,6 +91,11 @@ int MakeDirecoryInfo()
     if ((hFind = _findfirst("*", &fData)) == -1)
     {
         OutputDebugString(_T("未找到任何文件！"));
+        FILEINFO fInfo;
+        fInfo.bHasNext = FALSE;
+		CPacket pack(2, (BYTE*)&fInfo, sizeof(fInfo));
+		CServSocket::getInstance()->bSend(pack);
+
         return -3;
     }
     do {
