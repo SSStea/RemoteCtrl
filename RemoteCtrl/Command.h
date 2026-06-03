@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <map>
 #include <atlimage.h>
 #include <direct.h>
@@ -17,20 +17,20 @@ public:
 	int ExcuteCmd(int nCmd);
 
 protected:
-	typedef int (CCommand::* CMDFUNC)();//³ÉÔ±º¯ÊıÖ¸Õë£ºÃüÁî´¦Àíº¯Êı
-	std::map<int, CMDFUNC> m_mapFuntion; //¹şÏ£±í£º´ÓÃüÁîºÅºÍ¶ÔÓ¦ÃüÁî´¦Àíº¯ÊıµÄÓ³Éä
+	typedef int (CCommand::* CMDFUNC)();//æˆå‘˜å‡½æ•°æŒ‡é’ˆï¼šå‘½ä»¤å¤„ç†å‡½æ•°
+	std::map<int, CMDFUNC> m_mapFuntion; //mapè¡¨ï¼šä»å‘½ä»¤å·å’Œå¯¹åº”å‘½ä»¤å¤„ç†å‡½æ•°çš„æ˜ å°„
 
 	CLockInfoDialog dlg;
 	unsigned int threadid;
 
 protected:
-    //²é¿´´ÅÅÌ·ÖÇø
+    //æŸ¥çœ‹ç£ç›˜åˆ†åŒº
     int MakeDriverInfo()//1==>A 2==>B 3==>C ... 26==>Z
     {
         std::string strRes;
         for (int i = 1; i <= 26; i++)
         {
-            if (_chdrive(i) == 0)//´ú±íÄÜÇĞ»»µ½Õâ¸öÅÌ
+            if (_chdrive(i) == 0)//ä»£è¡¨èƒ½åˆ‡æ¢åˆ°è¿™ä¸ªç›˜
             {
                 if (strRes.size() > 0)
                 {
@@ -40,14 +40,14 @@ protected:
             }
         }
         strRes.push_back(',');
-        CPacket pack(1, (BYTE*)strRes.c_str(), strRes.size());//ÖØÔØÁËÒ»¸ö´ò°üÓÃµÄ¹¹Ôìº¯Êı
+        CPacket pack(1, (BYTE*)strRes.c_str(), strRes.size());//é‡è½½äº†ä¸€ä¸ªæ‰“åŒ…ç”¨çš„æ„é€ å‡½æ•°
         CEdoyunTool::Dump((BYTE*)pack.Data(), pack.Size());
 
         CServSocket::getInstance()->bSend(pack);
         return 0;
     }
 
-    //²é¿´Ö¸¶¨Ä¿Â¼ÏÂµÄÎÄ¼ş
+    //æŸ¥çœ‹æŒ‡å®šç›®å½•ä¸‹çš„æ–‡ä»¶
 
 
     int MakeDirecoryInfo()
@@ -57,7 +57,7 @@ protected:
 
         if (!(CServSocket::getInstance()->bGetFilePath(strPath)))
         {
-            OutputDebugString(_T("µ±Ç°µÄÃüÁî²»ÊÇ»ñÈ¡ÎÄ¼şÁĞ±í£¬ÃüÁî½âÎö´íÎó£¡"));
+            OutputDebugString(_T("å½“å‰çš„å‘½ä»¤ä¸æ˜¯è·å–æ–‡ä»¶åˆ—è¡¨ï¼Œå‘½ä»¤è§£æé”™è¯¯ï¼"));
             return -1;
         }
 
@@ -68,7 +68,7 @@ protected:
             CPacket pack(2, (BYTE*)&fInfo, sizeof(fInfo));
             CServSocket::getInstance()->bSend(pack);
 
-            OutputDebugString(_T("ÎŞÈ¨ÏŞ·ÃÎÊÄ¿Â¼£¡"));
+            OutputDebugString(_T("æ— æƒé™è®¿é—®ç›®å½•ï¼"));
             return -2;
         }
 
@@ -76,7 +76,7 @@ protected:
         intptr_t hFind = 0;
         if ((hFind = _findfirst("*", &fData)) == -1)
         {
-            OutputDebugString(_T("Î´ÕÒµ½ÈÎºÎÎÄ¼ş£¡"));
+            OutputDebugString(_T("æœªæ‰¾åˆ°ä»»ä½•æ–‡ä»¶ï¼"));
             FILEINFO fInfo;
             fInfo.bHasNext = FALSE;
             CPacket pack(2, (BYTE*)&fInfo, sizeof(fInfo));
@@ -92,18 +92,18 @@ protected:
             TRACE("%s\r\n", fInfo.szFileName);
 
             CPacket pack(2, (BYTE*)&fInfo, sizeof(fInfo));
-            CServSocket::getInstance()->bSend(pack);//»ñÈ¡Ò»¸öÎÄ¼ş¾Í·¢ËÍÒ»¸ö
+            CServSocket::getInstance()->bSend(pack);//è·å–ä¸€ä¸ªæ–‡ä»¶å°±å‘é€ä¸€ä¸ª
         } while (!_findnext(hFind, &fData));
 
         FILEINFO fInfo;
-        fInfo.bHasNext = FALSE;//¸æËß¿ØÖÆ¶ËÃ»ÓĞÏÂÒ»¸öÎÄ¼şÁË£¬²»±Ø¼ÌĞøµÈ´ı
+        fInfo.bHasNext = FALSE;//å‘Šè¯‰æ§åˆ¶ç«¯æ²¡æœ‰ä¸‹ä¸€ä¸ªæ–‡ä»¶äº†ï¼Œä¸å¿…ç»§ç»­ç­‰å¾…
         CPacket pack(2, (BYTE*)&fInfo, sizeof(fInfo));
         CServSocket::getInstance()->bSend(pack);
 
         return 0;
     }
 
-    //ÔËĞĞÎÄ¼ş
+    //è¿è¡Œæ–‡ä»¶
     int RunFile()
     {
         std::string strPath;
@@ -117,7 +117,7 @@ protected:
         return 0;
     }
 
-    //ÏÂÔØÎÄ¼ş
+    //ä¸‹è½½æ–‡ä»¶
     int DownLoadFile()
     {
         std::string strPath;
@@ -128,7 +128,7 @@ protected:
         errno_t err = fopen_s(&pFile, strPath.c_str(), "rb");
         if (err != 0)
         {
-            CPacket pack(4, (BYTE*)&data, 8);//µÚÒ»¸ö°üµÄÊı¾İÊÇÎÄ¼ş³¤¶È£¬Èç¹ûÎª0Ö¤Ã÷´ò¿ªÊ§°Ü
+            CPacket pack(4, (BYTE*)&data, 8);//ç¬¬ä¸€ä¸ªåŒ…çš„æ•°æ®æ˜¯æ–‡ä»¶é•¿åº¦ï¼Œå¦‚æœä¸º0è¯æ˜æ‰“å¼€å¤±è´¥
             CServSocket::getInstance()->bSend(pack);
             return -1;
         }
@@ -137,7 +137,7 @@ protected:
         {
             fseek(pFile, 0, SEEK_END);
             data = _ftelli64(pFile);
-            CPacket head(4, (BYTE*)&data, 8);//µÚÒ»¸ö°üµÄÊı¾İÊÇÎÄ¼ş³¤¶È£¬Èç¹ûÎª0Ö¤Ã÷ÎÄ¼ş³¤¶ÈÎª0
+            CPacket head(4, (BYTE*)&data, 8);//ç¬¬ä¸€ä¸ªåŒ…çš„æ•°æ®æ˜¯æ–‡ä»¶é•¿åº¦ï¼Œå¦‚æœä¸º0è¯æ˜æ–‡ä»¶é•¿åº¦ä¸º0
             fseek(pFile, 0, SEEK_SET);
             CServSocket::getInstance()->bSend(head);
 
@@ -157,7 +157,7 @@ protected:
         return 0;
     }
 
-    //²Ù×÷Êó±ê
+    //æ“ä½œé¼ æ ‡
     int MouseEvent()
     {
         MOUSEEVENT mouse;
@@ -167,16 +167,16 @@ protected:
             DWORD nFlag = 0;
             switch (mouse.nButton)
             {
-            case 0://×ó¼ü
+            case 0://å·¦é”®
                 nFlag = 1;
                 break;
-            case 1://ÓÒ¼ü
+            case 1://å³é”®
                 nFlag = 2;
                 break;
-            case 2://ÖĞ¼ü
+            case 2://ä¸­é”®
                 nFlag = 4;
                 break;
-            case 4://Ã»ÓĞ°´¼ü
+            case 4://æ²¡æœ‰æŒ‰é”®
                 nFlag = 8;
                 break;
             }
@@ -187,16 +187,16 @@ protected:
             }
             switch (mouse.nAction)
             {
-            case 0://µ¥»÷
+            case 0://å•å‡»
                 nFlag |= 0x10;
                 break;
-            case 1://Ë«»÷
+            case 1://åŒå‡»
                 nFlag |= 0x20;
                 break;
-            case 2://°´×¡
+            case 2://æŒ‰ä½
                 nFlag |= 0x40;
                 break;
-            case 3://·Å¿ª
+            case 3://æ”¾å¼€
                 nFlag |= 0x80;
                 break;
             default:
@@ -207,46 +207,46 @@ protected:
             TRACE("flag = %08x, x = %d, y = %d\r\n", nFlag, mouse.ptXY.x, mouse.ptXY.y);
             switch (nFlag)
             {
-            case 0x21://×ó¼üË«»÷
+            case 0x21://å·¦é”®åŒå‡»
                 mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, GetMessageExtraInfo());
                 mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, GetMessageExtraInfo());
-            case 0x11://×ó¼üµ¥»÷
+            case 0x11://å·¦é”®å•å‡»
                 mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, GetMessageExtraInfo());
                 mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, GetMessageExtraInfo());
                 break;
-            case 0x41://×ó¼ü°´ÏÂ
+            case 0x41://å·¦é”®æŒ‰ä¸‹
                 mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, GetMessageExtraInfo());
                 break;
-            case 0x81://×ó¼üËÉ¿ª
+            case 0x81://å·¦é”®æ¾å¼€
                 mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, GetMessageExtraInfo());
                 break;
-            case 0x22://ÓÒ¼üË«»÷
+            case 0x22://å³é”®åŒå‡»
                 mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, GetMessageExtraInfo());
                 mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, GetMessageExtraInfo());
-            case 0x12://ÓÒ¼üµ¥»÷
+            case 0x12://å³é”®å•å‡»
                 mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, GetMessageExtraInfo());
                 mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, GetMessageExtraInfo());
                 break;
-            case 0x42://ÓÒ¼ü°´×¡
+            case 0x42://å³é”®æŒ‰ä½
                 mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, GetMessageExtraInfo());
                 break;
-            case 0x82://ÓÒ¼üËÉ¿ª
+            case 0x82://å³é”®æ¾å¼€
                 mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, GetMessageExtraInfo());
                 break;
-            case 0x24://ÖĞ¼üË«»÷
+            case 0x24://ä¸­é”®åŒå‡»
                 mouse_event(MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, GetMessageExtraInfo());
                 mouse_event(MOUSEEVENTF_MIDDLEUP, 0, 0, 0, GetMessageExtraInfo());
-            case 0x14://ÖĞ¼üµ¥»÷
+            case 0x14://ä¸­é”®å•å‡»
                 mouse_event(MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, GetMessageExtraInfo());
                 mouse_event(MOUSEEVENTF_MIDDLEUP, 0, 0, 0, GetMessageExtraInfo());
                 break;
-            case 0x44://ÖĞ¼ü°´×¡
+            case 0x44://ä¸­é”®æŒ‰ä½
                 mouse_event(MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, GetMessageExtraInfo());
                 break;
-            case 0x84://ÖĞ¼üËÉ¿ª
+            case 0x84://ä¸­é”®æ¾å¼€
                 mouse_event(MOUSEEVENTF_MIDDLEUP, 0, 0, 0, GetMessageExtraInfo());
                 break;
-            case 0x08://µ¥´¿Êó±êÒÆ¶¯
+            case 0x08://å•çº¯é¼ æ ‡ç§»åŠ¨
                 mouse_event(MOUSEEVENTF_MOVE, mouse.ptXY.x, mouse.ptXY.y, 0, GetMessageExtraInfo());
                 break;
             }
@@ -256,42 +256,42 @@ protected:
         }
         else
         {
-            OutputDebugString(_T("»ñÈ¡Êó±ê²Ù×÷²ÎÊıÊ§°Ü£¡£¡"));
+            OutputDebugString(_T("è·å–é¼ æ ‡æ“ä½œå‚æ•°å¤±è´¥ï¼ï¼"));
             return -1;
         }
 
         return 0;
     }
 
-    //·¢ËÍÆÁÄ»½ØÍ¼
+    //å‘é€å±å¹•æˆªå›¾
     int SendScreen()
     {
-        CImage screen;//C++·â×°µÄ¹ØÓÚÍ¼ÏñµÄÀà
-        HDC hScreen = ::GetDC(NULL);//»ñÈ¡Éè±¸µÄÉÏÏÂÎÄ
-        int nBitPixel = GetDeviceCaps(hScreen, BITSPIXEL);//»ñÈ¡Éè±¸µÄ¶à¸öÊôĞÔ£ºµÃµ½Î»¿í
-        int nWidth = GetDeviceCaps(hScreen, HORZRES);//µÃµ½¿í¶È
-        int nHeight = GetDeviceCaps(hScreen, VERTRES);//µÃµ½¸ß¶È
+        CImage screen;//C++å°è£…çš„å…³äºå›¾åƒçš„ç±»
+        HDC hScreen = ::GetDC(NULL);//è·å–è®¾å¤‡çš„ä¸Šä¸‹æ–‡
+        int nBitPixel = GetDeviceCaps(hScreen, BITSPIXEL);//è·å–è®¾å¤‡çš„å¤šä¸ªå±æ€§ï¼šå¾—åˆ°ä½å®½
+        int nWidth = GetDeviceCaps(hScreen, HORZRES);//å¾—åˆ°å®½åº¦
+        int nHeight = GetDeviceCaps(hScreen, VERTRES);//å¾—åˆ°é«˜åº¦
 
         screen.Create(nWidth, nHeight, nBitPixel);
         BitBlt(screen.GetDC(), 0, 0, nWidth, nHeight, hScreen, 0, 0, SRCCOPY);
         ReleaseDC(NULL, hScreen);
 
-        HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);//»ñÈ¡È«¾Ö¿ÉÒÆ¶¯µÄÄÚ´æ
+        HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);//è·å–å…¨å±€å¯ç§»åŠ¨çš„å†…å­˜
         if (hMem == NULL)
         {
             return -1;
         }
-        IStream* pStream = NULL;//½¨Á¢Ò»¸öÄÚ´æÁ÷£¬ÀûÓÃSaveµÄÖØÔØº¯Êı
-        HRESULT hRet = CreateStreamOnHGlobal(hMem, TRUE, &pStream);//½«ÄÚ´æÁ÷´´½¨ÔÚÈ«¾Ö¿ÉÒÆ¶¯µÄÄÚ´æÉÏ
+        IStream* pStream = NULL;//å»ºç«‹ä¸€ä¸ªå†…å­˜æµï¼Œåˆ©ç”¨Saveçš„é‡è½½å‡½æ•°
+        HRESULT hRet = CreateStreamOnHGlobal(hMem, TRUE, &pStream);//å°†å†…å­˜æµåˆ›å»ºåœ¨å…¨å±€å¯ç§»åŠ¨çš„å†…å­˜ä¸Š
         if (hRet == S_OK)
         {
-            screen.Save(pStream, Gdiplus::ImageFormatPNG);//½«ÆÁÄ»±£´æµ½ÄÚ´æÁ÷
+            screen.Save(pStream, Gdiplus::ImageFormatPNG);//å°†å±å¹•ä¿å­˜åˆ°å†…å­˜æµ
             LARGE_INTEGER begin = { 0 };
-            pStream->Seek(begin, STREAM_SEEK_SET, NULL);//½«ÄÚ´æÁ÷µÄÖ¸ÕëÉèÖÃµ½Á÷µÄÍ·²¿
-            PBYTE pData = (PBYTE)GlobalLock(hMem);//½«hMemÓëpStream lock´«µİ¸øpData£¬
-            //²»lock hMemºÍpStreamÊÇ·ÖÀëµÄ£¬¶Á²»µ½Êı¾İ
+            pStream->Seek(begin, STREAM_SEEK_SET, NULL);//å°†å†…å­˜æµçš„æŒ‡é’ˆè®¾ç½®åˆ°æµçš„å¤´éƒ¨
+            PBYTE pData = (PBYTE)GlobalLock(hMem);//å°†hMemä¸pStream lockä¼ é€’ç»™pDataï¼Œ
+            //ä¸lock hMemå’ŒpStreamæ˜¯åˆ†ç¦»çš„ï¼Œè¯»ä¸åˆ°æ•°æ®
             SIZE_T nSize = GlobalSize(hMem);
-            CPacket pack(6, pData, nSize);//½«¶Á³öÀ´µÄÄÚ´æÊı¾İ´ò°ü
+            CPacket pack(6, pData, nSize);//å°†è¯»å‡ºæ¥çš„å†…å­˜æ•°æ®æ‰“åŒ…
             CServSocket::getInstance()->bSend(pack);
             GlobalUnlock(hMem);
         }
@@ -325,15 +325,15 @@ protected:
     void threadLockDlgMain()
     {
 		TRACE("%s(%d): %d\r\n", __FUNCTION__, __LINE__, GetCurrentThreadId());
-		dlg.Create(IDD_DIALOG_INFO, NULL);//·ÇÄ£Ì¬Dialog´´½¨
-		dlg.ShowWindow(SW_SHOW);//ÏÔÊ¾´°¿Ú
+		dlg.Create(IDD_DIALOG_INFO, NULL);//éæ¨¡æ€Dialogåˆ›å»º
+		dlg.ShowWindow(SW_SHOW);//æ˜¾ç¤ºçª—å£
 		CRect rect;
 		rect.left = 0;
 		rect.top = 0;
 		rect.right = GetSystemMetrics(SM_CXFULLSCREEN);
 		rect.bottom = GetSystemMetrics(SM_CYFULLSCREEN);
 		rect.bottom = LONG(rect.bottom * 1.07);
-		dlg.MoveWindow(rect);//ÉèÖÃ´°¿ÚÏÔÊ¾´óĞ¡
+		dlg.MoveWindow(rect);//è®¾ç½®çª—å£æ˜¾ç¤ºå¤§å°
 		CWnd* pText = dlg.GetDlgItem(IDC_STATIC);
 		if (pText)
 		{
@@ -344,13 +344,13 @@ protected:
 			int nHeight = rtText.Height();
 			int y = (rect.bottom - nHeight) / 2;
 			pText->MoveWindow(x, y, rtText.Width(), rtText.Height());
-		}//½«"ÁªÏµ¹ÜÀíÔ±"ÎÄ±¾ÖÃÓÚÆÁÄ»ÕıÖĞÑë
+		}//å°†"è”ç³»ç®¡ç†å‘˜"æ–‡æœ¬ç½®äºå±å¹•æ­£ä¸­å¤®
 
-		//´°¿ÚÖÃ¶¥
+		//çª—å£ç½®é¡¶
 		dlg.SetWindowPos(&dlg.wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
-		//²»ÏÔÊ¾Êó±ê
+		//ä¸æ˜¾ç¤ºé¼ æ ‡
 		ShowCursor(FALSE);
-		//Òş²ØÈÎÎñÀ¸
+		//éšè—ä»»åŠ¡æ 
 		::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_HIDE);
 
 		dlg.GetWindowRect(rect);
@@ -358,14 +358,14 @@ protected:
 		rect.top = 0;
 		rect.right = 1;
 		rect.bottom = 1;
-		ClipCursor(rect);//ÏŞÖÆÊó±ê»î¶¯·¶Î§
+		ClipCursor(rect);//é™åˆ¶é¼ æ ‡æ´»åŠ¨èŒƒå›´
 
 		MSG msg;
 		while (GetMessage(&msg, NULL, 0, 0))
-		{//MFC±à³ÌÊÇ»ùÓÚÏûÏ¢Ñ­»·µÄ£¬ËùÒÔ±ØĞëÓĞÕâ¸öÑ­»·¶Ô»°¿ò²ÅÏÔÊ¾
+		{//MFCç¼–ç¨‹æ˜¯åŸºäºæ¶ˆæ¯å¾ªç¯çš„ï¼Œæ‰€ä»¥å¿…é¡»æœ‰è¿™ä¸ªå¾ªç¯å¯¹è¯æ¡†æ‰æ˜¾ç¤º
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
-			if (msg.message == WM_KEYDOWN && msg.wParam == 0x1B)//°´ÏÂESCÍË³ö
+			if (msg.message == WM_KEYDOWN && msg.wParam == 0x1B)//æŒ‰ä¸‹ESCé€€å‡º
 			{
 				TRACE("msg: %08X, wparam: %08X, lparam: %08X\r\n",
 					msg.message, msg.wParam, msg.lParam);
@@ -373,21 +373,27 @@ protected:
 			}
 		}
 
-		//ÏÔÊ¾ÈÎÎñÀ¸
+		//æ˜¾ç¤ºä»»åŠ¡æ 
 		::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_SHOW);
-		//»Ö¸´Êó±ê»î¶¯·¶Î§ÏŞÖÆ
+		//æ¢å¤é¼ æ ‡æ´»åŠ¨èŒƒå›´é™åˆ¶
 		ClipCursor(NULL);
-		//ÏÔÊ¾Êó±ê
+		//æ˜¾ç¤ºé¼ æ ‡
 		ShowCursor(TRUE);
-		//Ïú»Ù´°¿Ú
+		//é”€æ¯çª—å£
 		dlg.DestroyWindow();
     }
-
+    
+    //threadLockDlgå‡½æ•°æ˜¯ä¸ºäº†åˆ›å»ºçº¿ç¨‹è€Œå‡†å¤‡çš„å‡½æ•°ï¼Œè¿™é‡Œæ˜¯ä½¿ç”¨_beginthreadexå»åˆ›å»ºçš„çº¿ç¨‹ï¼Œ
+    //_beginthreadexçš„å‡½æ•°ç­¾åè¦æ±‚ç¬¬ä¸‰ä¸ªå‚æ•°å¿…é¡»æ˜¯ä¸€ä¸ªé™æ€æˆå‘˜å‡½æ•°æˆ–ä¸€ä¸ªå…¨å±€å‡½æ•°ã€‚
+    //æ‰€ä»¥è¿™é‡Œå°†threadLockDlgå£°æ˜æˆä¸€ä¸ªé™æ€çš„ï¼Œä½†é™æ€å‡½æ•°åˆæ²¡æœ‰thisæŒ‡é’ˆï¼Œæ‰€ä»¥æ— æ³•è°ƒç”¨CCommandé‡Œçš„æˆå‘˜
+    //å‡½æ•°ã€æˆå‘˜å˜é‡ï¼Œæ‰€ä»¥åœ¨ç»™åˆ›å»ºçº¿ç¨‹ä¼ å‚çš„æ—¶å€™ä¼ äº†ä¸€ä¸ªthisæŒ‡é’ˆè¿›å»ï¼ˆ_beginthreadexçš„ç¬¬å››ä¸ªå‚æ•°ï¼‰ï¼Œ
+    //è€ŒthreadLockDlgçš„argå‚æ•°å°±æ˜¯æˆ‘ä»¬åˆ›å»ºçº¿ç¨‹ä¼ çš„thisæŒ‡é’ˆï¼Œæˆ‘ä»¬å¯ä»¥è½¬æ¢å›CCommand*ç±»å‹å»è°ƒç”¨è¿™ä¸ªç±»
+    //é‡Œçš„æˆ‘ä»¬æƒ³è¦è°ƒç”¨çš„æˆå‘˜å‡½æ•°ã€æˆå‘˜å˜é‡
 	int LockMachine()
 	{
 		if (dlg.m_hWnd == NULL || dlg.m_hWnd == INVALID_HANDLE_VALUE)
 		{
-			//_beginthread(threadLockDlg, 0, NULL);//·Åµ½Ò»¸öÏß³ÌÀï£¬±ÜÃâÏûÏ¢ËÀÑ­»·½ÓÊÕ²»µ½unlock
+			//_beginthread(threadLockDlg, 0, NULL);//æ”¾åˆ°ä¸€ä¸ªçº¿ç¨‹é‡Œï¼Œé¿å…æ¶ˆæ¯æ­»å¾ªç¯æ¥æ”¶ä¸åˆ°unlock
 			_beginthreadex(NULL, 0, &CCommand::threadLockDlg, this, 0, &threadid);
 			TRACE("threadid: %d\r\n", threadid);
 		}
@@ -399,8 +405,8 @@ protected:
 
 	int UnLockMachine()
 	{
-		//Ç°Á½¸ö·½·¨²»¿ÉÒÔµÄÔ­ÒòÊÇLockMachineÊÇÓÃÏß³Ì¿ØÖÆµÄ£¬Ïß³ÌÖ»ÄÜ½ÓÊÕµ½×Ô¼ºÏß³ÌµÄÏûÏ¢£¬
-		// ËùÒÔĞèÒªÓÃPostThreadMessage·½·¨¸ø¶ÔÓ¦Ïß³Ì·¢ÏûÏ¢
+		//å‰ä¸¤ä¸ªæ–¹æ³•ä¸å¯ä»¥çš„åŸå› æ˜¯LockMachineæ˜¯ç”¨çº¿ç¨‹æ§åˆ¶çš„ï¼Œçº¿ç¨‹åªèƒ½æ¥æ”¶åˆ°è‡ªå·±çº¿ç¨‹çš„æ¶ˆæ¯ï¼Œ
+		// æ‰€ä»¥éœ€è¦ç”¨PostThreadMessageæ–¹æ³•ç»™å¯¹åº”çº¿ç¨‹å‘æ¶ˆæ¯
 		//dlg.SendMessage(WM_KEYDOWN, 0x1B, 00010001);
 		//::SendMessage(dlg.m_hWnd, WM_KEYDOWN, 0x1B, 00010001);
 		PostThreadMessage(threadid, WM_KEYDOWN, 0x1B, 00010001);
@@ -414,7 +420,7 @@ protected:
 		std::string strPath;
 		CServSocket::getInstance()->bGetFilePath(strPath);
 		TCHAR sPath[MAX_PATH] = _T("");
-		//mbstowcs(sPath, strPath.c_str(), strPath.size());ÖĞÎÄÈİÒ×ÂÒÂë
+		//mbstowcs(sPath, strPath.c_str(), strPath.size());ä¸­æ–‡å®¹æ˜“ä¹±ç 
 		MultiByteToWideChar(CP_ACP, 0, strPath.c_str(), (int)strPath.size(), sPath, sizeof(sPath) / sizeof(TCHAR));
 		DeleteFile(sPath);
 

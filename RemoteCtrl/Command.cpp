@@ -1,4 +1,4 @@
-#include "pch.h"
+ï»¿#include "pch.h"
 #include "Command.h"
 
 CCommand::CCommand():threadid(0)
@@ -19,11 +19,11 @@ CCommand::CCommand():threadid(0)
 		{9, &CCommand::DeleteLocalFile},
 		{1981, &CCommand::TestConnect},
 		{-1, NULL}
-	};//Ò»¸öÊı×é½á¹¹Ìå
+	};//ä¸€ä¸ªæ•°ç»„ç»“æ„ä½“
 
 	for (int i = 0; data[i].nCmd != -1; i++)
 	{
-		//½«Êı×é½á¹¹ÌåÖĞµÄÃüÁîºÍ¶ÔÓ¦ÃüÁî´¦Àíº¯ÊıµÄÓ³Éä´æµ½¹şÏ£±íÖĞ
+		//å°†æ•°ç»„ç»“æ„ä½“ä¸­çš„å‘½ä»¤å’Œå¯¹åº”å‘½ä»¤å¤„ç†å‡½æ•°çš„æ˜ å°„å­˜åˆ°mapè¡¨ä¸­
 		m_mapFuntion.insert(std::pair<int, CMDFUNC>(data[i].nCmd, data[i].func));
 	}
 }
@@ -37,5 +37,5 @@ int CCommand::ExcuteCmd(int nCmd)
 	}
 
 	return (this->*it->second)();
-	//µü´úÆ÷itµÄsecondÊÇÀàµÄ³ÉÔ±º¯ÊıÖ¸Õë
+	//è¿­ä»£å™¨itçš„secondæ˜¯ç±»çš„æˆå‘˜å‡½æ•°æŒ‡é’ˆ
 }

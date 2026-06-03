@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "pch.h"
 #include "framework.h"
 #include <string>
@@ -33,44 +33,44 @@ public:
 		sSum = packet.sSum;
 	}
 
-	//½âÎö°üµÄ¹¹Ôìº¯Êı
+	//è§£æåŒ…çš„æ„é€ å‡½æ•°
 	CPacket(const BYTE* pData, size_t& nSize)
 	{
-		size_t pos = 0;//´ú±íÄ¿Ç°Êı¾İ½âÎöµ½ÄÄ¸öÎ»ÖÃ
+		size_t pos = 0;//ä»£è¡¨ç›®å‰æ•°æ®è§£æåˆ°å“ªä¸ªä½ç½®
 		for (; pos < nSize; pos++)
 		{
 			if (*(WORD*)(pData + pos) == 0xFEFF)
 			{
 				sHead = *(WORD*)(pData + pos);
-				pos += 2;//½âÎöÍê°üÍ·£¬Î»ÖÃµ½°üÍ·Ö®ºó
+				pos += 2;//è§£æå®ŒåŒ…å¤´ï¼Œä½ç½®åˆ°åŒ…å¤´ä¹‹å
 				break;
 			}
 		}
-		if (pos + 8 > nSize)//4£ºnLength£¬2£ºsCmd£¬2£ºsSum£¬ºóÃæ¾Í²»»á·ÃÎÊÔ½½ç
-		{//°üÊı¾İ¿ÉÄÜ²»È«£¬»òÕß°üÍ·Î´ÄÜÈ«²¿½ÓÊÕµ½
+		if (pos + 8 > nSize)//4ï¼šnLengthï¼Œ2ï¼šsCmdï¼Œ2ï¼šsSumï¼Œåé¢å°±ä¸ä¼šè®¿é—®è¶Šç•Œ
+		{//åŒ…æ•°æ®å¯èƒ½ä¸å…¨ï¼Œæˆ–è€…åŒ…å¤´æœªèƒ½å…¨éƒ¨æ¥æ”¶åˆ°
 			nSize = 0;
 			return;
 		}
 		nLength = *(DWORD*)(pData + pos);
-		pos += 4;//½âÎöÍê³¤¶È£¬Î»ÖÃµ½³¤¶ÈÖ®ºó
+		pos += 4;//è§£æå®Œé•¿åº¦ï¼Œä½ç½®åˆ°é•¿åº¦ä¹‹å
 		if (nLength + pos > nSize)
-		{//°üÎ´ÍêÈ«½ÓÊÕµ½£¬¾Í·µ»Ø£¬½âÎöÊ§°Ü
+		{//åŒ…æœªå®Œå…¨æ¥æ”¶åˆ°ï¼Œå°±è¿”å›ï¼Œè§£æå¤±è´¥
 			nSize = 0;
 			return;
 		}
 
 		sCmd = *(WORD*)(pData + pos);
-		pos += 2;//½âÎöÍê¿ØÖÆÃüÁî£¬Î»ÖÃµ½ÃüÁîÖ®ºó
+		pos += 2;//è§£æå®Œæ§åˆ¶å‘½ä»¤ï¼Œä½ç½®åˆ°å‘½ä»¤ä¹‹å
 
 		if (nLength > 4)
 		{
-			strData.resize(nLength - 2 - 2);//¼õµôsCmdºÍsSumµÄ³¤¶È
+			strData.resize(nLength - 2 - 2);//å‡æ‰sCmdå’ŒsSumçš„é•¿åº¦
 			memcpy((void*)strData.c_str(), pData + pos, nLength - 4);
-			pos += (nLength - 4);//½âÎöÍêÊı¾İ£¬Î»ÖÃµ½Êı¾İÖ®ºó
+			pos += (nLength - 4);//è§£æå®Œæ•°æ®ï¼Œä½ç½®åˆ°æ•°æ®ä¹‹å
 		}
 
 		sSum = *(WORD*)(pData + pos);
-		pos += 2;//½âÎöÍêĞ£Ñé£¬Î»ÖÃµ½Ğ£ÑéÖ®ºó
+		pos += 2;//è§£æå®Œæ ¡éªŒï¼Œä½ç½®åˆ°æ ¡éªŒä¹‹å
 		WORD sum = 0;
 		for (size_t j = 0; j < strData.size(); j++)
 		{
@@ -84,11 +84,11 @@ public:
 		nSize = 0;
 	}
 
-	//¹¹Ôì°üµÄ¹¹Ôìº¯Êı
+	//æ„é€ åŒ…çš„æ„é€ å‡½æ•°
 	CPacket(WORD nCmd, const BYTE* pData, size_t nSize)
 	{
 		sHead = 0xFEFF;
-		nLength = (DWORD)nSize + 4;//Êı¾İ³¤¶È+ÃüÁî³¤¶È+Ğ£Ñé³¤¶È
+		nLength = (DWORD)nSize + 4;//æ•°æ®é•¿åº¦+å‘½ä»¤é•¿åº¦+æ ¡éªŒé•¿åº¦
 		sCmd = nCmd;
 
 		if (nSize > 0)
@@ -108,13 +108,13 @@ public:
 		}
 	}
 
-	//»ñÈ¡°üµÄ´óĞ¡
+	//è·å–åŒ…çš„å¤§å°
 	int Size()
 	{
 		return nLength + 6;
 	}
 
-	//»ñÈ¡°üµÄÊı¾İ
+	//è·å–åŒ…çš„æ•°æ®
 	const char* Data()
 	{
 		strOut.resize(nLength + 6);
@@ -140,12 +140,12 @@ public:
 	{
 	}
 public:
-	WORD		sHead;		//°üÍ·£º¹Ì¶¨FE FF
-	DWORD		nLength;	//°ü³¤¶È£º´Ó¿ØÖÆÃüÁî->Ğ£Ñé
-	WORD		sCmd;		//¿ØÖÆÃüÁî
-	std::string strData;	//°üÊı¾İ
-	WORD		sSum;		//Ğ£Ñé
-	std::string strOut;		//Õû¸ö°üµÄÊı¾İ
+	WORD		sHead;		//åŒ…å¤´ï¼šå›ºå®šFE FF
+	DWORD		nLength;	//åŒ…é•¿åº¦ï¼šä»æ§åˆ¶å‘½ä»¤->æ ¡éªŒ
+	WORD		sCmd;		//æ§åˆ¶å‘½ä»¤
+	std::string strData;	//åŒ…æ•°æ®
+	WORD		sSum;		//æ ¡éªŒ
+	std::string strOut;		//æ•´ä¸ªåŒ…çš„æ•°æ®
 };
 #pragma pack(pop)
 
@@ -158,9 +158,9 @@ typedef struct MouseEvent
 		ptXY.x = 0;
 		ptXY.y = 0;
 	}
-	WORD	nAction;	//µã»÷0 ÒÆ¶¯1 Ë«»÷2
-	WORD	nButton;	//×ó¼ü0 ÓÒ¼ü1 ÖĞ¼ü2
-	POINT	ptXY;		//×ø±ê
+	WORD	nAction;	//ç‚¹å‡»0 ç§»åŠ¨1 åŒå‡»2
+	WORD	nButton;	//å·¦é”®0 å³é”®1 ä¸­é”®2
+	POINT	ptXY;		//åæ ‡
 }MOUSEEVENT, * pMOUSEEVENT;
 
 typedef struct file_info
@@ -172,10 +172,10 @@ typedef struct file_info
 		bHasNext = TRUE;
 		memset(szFileName, 0, sizeof(szFileName));
 	}
-	BOOL bIsInvalid;            //ÊÇ·ñÎŞĞ§£º0·ñ 1ÊÇ
-	BOOL bIsDirectory;          //ÊÇ·ñÎªÄ¿Â¼£º0·ñ 1ÊÇ
-	BOOL bHasNext;              //ÊÇ·ñ»¹ÓĞÏÂÒ»¸öÎÄ¼ş£º0ÎŞ 1ÓĞ
-	char szFileName[256];       //ÎÄ¼şÃû
+	BOOL bIsInvalid;            //æ˜¯å¦æ— æ•ˆï¼š0å¦ 1æ˜¯
+	BOOL bIsDirectory;          //æ˜¯å¦ä¸ºç›®å½•ï¼š0å¦ 1æ˜¯
+	BOOL bHasNext;              //æ˜¯å¦è¿˜æœ‰ä¸‹ä¸€ä¸ªæ–‡ä»¶ï¼š0æ—  1æœ‰
+	char szFileName[256];       //æ–‡ä»¶å
 }FILEINFO, * pFILEINFO;
 
 std::string GetSockErrInfo(int wsaErrcode);
@@ -183,10 +183,10 @@ std::string GetSockErrInfo(int wsaErrcode);
 class CClientSocket
 {
 public:
-	// »ñÈ¡È«¾ÖÎ¨Ò»µÄ·şÎñ¶Ë socket ¹ÜÀí¶ÔÏó£¬³õÊ¼»¯Windows socket»·¾³
-	// µÚÒ»´Îµ÷ÓÃÊ±»á new Ò»¸ö¶ÔÏó£¬ºóĞøµ÷ÓÃ¶¼·µ»ØÍ¬Ò»¸ö¶ÔÏó¡£
+	// è·å–å…¨å±€å”¯ä¸€çš„æœåŠ¡ç«¯ socket ç®¡ç†å¯¹è±¡ï¼Œåˆå§‹åŒ–Windows socketç¯å¢ƒ
+	// ç¬¬ä¸€æ¬¡è°ƒç”¨æ—¶ä¼š new ä¸€ä¸ªå¯¹è±¡ï¼Œåç»­è°ƒç”¨éƒ½è¿”å›åŒä¸€ä¸ªå¯¹è±¡ã€‚
 	static CClientSocket* getInstance()
-	{//¾²Ì¬º¯ÊıÃ»ÓĞthisÖ¸Õë£¬ÎŞ·¨·ÃÎÊ³ÉÔ±±äÁ¿£¬Ö»ÄÜ½«³ÉÔ±±äÁ¿ÉùÃ÷Îª¾²Ì¬
+	{//é™æ€å‡½æ•°æ²¡æœ‰thisæŒ‡é’ˆï¼Œæ— æ³•è®¿é—®æˆå‘˜å˜é‡ï¼Œåªèƒ½å°†æˆå‘˜å˜é‡å£°æ˜ä¸ºé™æ€
 		if (m_Instance == NULL)
 		{
 			m_Instance = new CClientSocket();
@@ -194,9 +194,9 @@ public:
 		return m_Instance;
 	}
 
-	// ³õÊ¼»¯¿Í»§¶ËÁ¬½Ó socket£º
-	// 1. ×¼±¸·şÎñÆ÷µØÖ·
-	// 2. ¿Í»§¶ËÁ¬½Ó·şÎñÆ÷
+	// åˆå§‹åŒ–å®¢æˆ·ç«¯è¿æ¥ socketï¼š
+	// 1. å‡†å¤‡æœåŠ¡å™¨åœ°å€
+	// 2. å®¢æˆ·ç«¯è¿æ¥æœåŠ¡å™¨
 	bool bInitSocket(int nIP, int nPort)
 	{
 		if (m_Sock != INVALID_SOCKET)
@@ -221,15 +221,15 @@ public:
 
 		if (serv_adr.sin_addr.s_addr == INADDR_NONE)
 		{
-			AfxMessageBox("Ö¸¶¨IPµØÖ·²»´æÔÚ£¡");
+			AfxMessageBox("æŒ‡å®šIPåœ°å€ä¸å­˜åœ¨ï¼");
 			return false;
 		}
 
 		int ret = connect(m_Sock, (const sockaddr*)&serv_adr, sizeof(serv_adr));
 		if (ret == -1)
 		{
-			AfxMessageBox("Á¬½ÓÊ§°Ü£¡");
-			TRACE("Á¬½ÓÊ§°Ü£º%d %s\r\n", WSAGetLastError(), 
+			AfxMessageBox("è¿æ¥å¤±è´¥ï¼");
+			TRACE("è¿æ¥å¤±è´¥ï¼š%d %s\r\n", WSAGetLastError(), 
 				GetSockErrInfo(WSAGetLastError()).c_str());
 			return false;
 		}
@@ -238,7 +238,7 @@ public:
 	}
 
 #define BUFFER_SIZE 20480000
-	// ´¦Àí¿Í»§¶Ë·¢À´µÄÃüÁî¡£
+	// å¤„ç†å®¢æˆ·ç«¯å‘æ¥çš„å‘½ä»¤ã€‚
 	int dealCommand()
 	{
 		if (m_Sock == -1)
@@ -248,32 +248,32 @@ public:
 
 		char* buffer = m_vecBuffer.data();
 		static size_t index = 0;
-		//¶¨ÒåÎª¾²Ì¬È«¾Ö±äÁ¿£º·şÎñ¶Ë¿ÉÄÜÒ»´ÎĞÔ·¢À´¶à¸ö°üµÄÊı¾İ£¬µ×ÏÂµÄ´¦ÀíÂß¼­ÊÇÃ¿½âÎöÒ»¸ö°ü¾Í·µ»Ø£¬
-		//	²¢½«´¦ÀíÍêµÄÊı¾İ´ÓbufferÖĞÒÆ³ı¡¢ĞŞ¸ÄindexµÄË÷ÒıÖµ£¬Òò´Ëindex²»ÄÜÔÚÃ¿´Î´¦ÀíÃüÁîÊ±¶¼Îª0£¬
-		//	ÕâÑù»áµ¼ÖÂÃ¿´Î´æ´¢Êı¾İ¶¼´Ó0¿ªÊ¼´æ´¢£¬´Ó¶ø¸²¸ÇÖ®Ç°·şÎñ¶Ë·¢À´µÄµ«Ã»ÓĞ´¦ÀíÍêµÄÊı¾İ
-		//Ö¸Ïòµ±Ç°buffer´æ´¢µÄÊı¾İµÄÎ»ÖÃ£¬Öµ±íÊ¾µ±Ç°´æ´¢µÄ×Ü³¤¶È
+		//å®šä¹‰ä¸ºé™æ€å…¨å±€å˜é‡ï¼šæœåŠ¡ç«¯å¯èƒ½ä¸€æ¬¡æ€§å‘æ¥å¤šä¸ªåŒ…çš„æ•°æ®ï¼Œåº•ä¸‹çš„å¤„ç†é€»è¾‘æ˜¯æ¯è§£æä¸€ä¸ªåŒ…å°±è¿”å›ï¼Œ
+		//	å¹¶å°†å¤„ç†å®Œçš„æ•°æ®ä»bufferä¸­ç§»é™¤ã€ä¿®æ”¹indexçš„ç´¢å¼•å€¼ï¼Œå› æ­¤indexä¸èƒ½åœ¨æ¯æ¬¡å¤„ç†å‘½ä»¤æ—¶éƒ½ä¸º0ï¼Œ
+		//	è¿™æ ·ä¼šå¯¼è‡´æ¯æ¬¡å­˜å‚¨æ•°æ®éƒ½ä»0å¼€å§‹å­˜å‚¨ï¼Œä»è€Œè¦†ç›–ä¹‹å‰æœåŠ¡ç«¯å‘æ¥çš„ä½†æ²¡æœ‰å¤„ç†å®Œçš„æ•°æ®
+		//æŒ‡å‘å½“å‰bufferå­˜å‚¨çš„æ•°æ®çš„ä½ç½®ï¼Œå€¼è¡¨ç¤ºå½“å‰å­˜å‚¨çš„æ€»é•¿åº¦
 		while (true)
 		{
 			size_t len = recv(m_Sock, buffer + index, BUFFER_SIZE - (int)index, 0);
-			if (len <= 0 && index == 0)//±íÊ¾Ã»¶Áµ½²¢ÇÒ»º³åÇøÀïÃ»Êı¾İ
+			if (len <= 0 && index == 0)//è¡¨ç¤ºæ²¡è¯»åˆ°å¹¶ä¸”ç¼“å†²åŒºé‡Œæ²¡æ•°æ®
 			{
 				return -1;
 			}
-			index += len;//¸üĞÂÊı¾İÔÚbufferÖĞµÄ´æ´¢Ë÷ÒıÖµindex£º½«recvµÄÊı¾İ³¤¶Èlen¼Óµ½ÉÏÒ»´ÎµÄindex
-			len = index;//½«buffer´æ´¢µÄÊı¾İ³¤¶È¸ÄÎªµ±Ç°buffer´æ´¢Êı¾İµÄË÷ÒıÎ»ÖÃ
+			index += len;//æ›´æ–°æ•°æ®åœ¨bufferä¸­çš„å­˜å‚¨ç´¢å¼•å€¼indexï¼šå°†recvçš„æ•°æ®é•¿åº¦lenåŠ åˆ°ä¸Šä¸€æ¬¡çš„index
+			len = index;//å°†bufferå­˜å‚¨çš„æ•°æ®é•¿åº¦æ”¹ä¸ºå½“å‰bufferå­˜å‚¨æ•°æ®çš„ç´¢å¼•ä½ç½®
 			m_packet = CPacket((BYTE*)buffer, len);
-			//°´ÒıÓÃ´«Èëµ±Ç°Êı¾İµÄ³¤¶Èlen£¬½«buffer½âÎö£¬½«Êı¾İ·â×°ÎªPacket²¢·µ»Ø·â×°ÁËµÄÊı¾İµÄ³¤¶Èlen
-			if (len > 0)//Èç¹û½âÎöµ½ÁËÊı¾İ
+			//æŒ‰å¼•ç”¨ä¼ å…¥å½“å‰æ•°æ®çš„é•¿åº¦lenï¼Œå°†bufferè§£æï¼Œå°†æ•°æ®å°è£…ä¸ºPacketå¹¶è¿”å›å°è£…äº†çš„æ•°æ®çš„é•¿åº¦len
+			if (len > 0)//å¦‚æœè§£æåˆ°äº†æ•°æ®
 			{
-				memmove(buffer, buffer + len, index - len);//½«½âÎöµ½µÄÊı¾İ´ÓbufferÖĞÒÆ×ß
-				index -= len;//±ä¸üÊı¾İÔÚbufferÖĞµÄ´æ´¢Ë÷ÒıÖµindex£¬¼õµô½âÎöµ½µÄÊı¾İ³¤¶Èlen
+				memmove(buffer, buffer + len, index - len);//å°†è§£æåˆ°çš„æ•°æ®ä»bufferä¸­ç§»èµ°
+				index -= len;//å˜æ›´æ•°æ®åœ¨bufferä¸­çš„å­˜å‚¨ç´¢å¼•å€¼indexï¼Œå‡æ‰è§£æåˆ°çš„æ•°æ®é•¿åº¦len
 				return m_packet.sCmd;
 			}
 		}
 		return -1;
 	}
 
-	// Ïòµ±Ç°ÒÑÁ¬½ÓµÄ¿Í»§¶Ë·¢ËÍÊı¾İ¡£
+	// å‘å½“å‰å·²è¿æ¥çš„å®¢æˆ·ç«¯å‘é€æ•°æ®ã€‚
 	bool bSend(const char* pData, int nSize)
 	{
 		if (m_Sock == -1)
@@ -328,21 +328,21 @@ private:
 	CPacket				m_packet;
 	std::vector<char>	m_vecBuffer;
 
-	// ¹¹Ôìº¯ÊıË½ÓĞ»¯£¬ÊÇµ¥ÀıÄ£Ê½µÄ¹Ø¼ü£º
-	// Íâ²¿²»ÄÜÖ±½Ó new CServSocket£¬Ö»ÄÜÍ¨¹ı getInstance »ñÈ¡Î¨Ò»¶ÔÏó¡£
+	// æ„é€ å‡½æ•°ç§æœ‰åŒ–ï¼Œæ˜¯å•ä¾‹æ¨¡å¼çš„å…³é”®ï¼š
+	// å¤–éƒ¨ä¸èƒ½ç›´æ¥ new CServSocketï¼Œåªèƒ½é€šè¿‡ getInstance è·å–å”¯ä¸€å¯¹è±¡ã€‚
 	CClientSocket()
 	{
-		// Windows ÏÂÊ¹ÓÃ socket Ç°£¬±ØĞëÏÈµ÷ÓÃ WSAStartup ³õÊ¼»¯ Winsock »·¾³¡£
+		// Windows ä¸‹ä½¿ç”¨ socket å‰ï¼Œå¿…é¡»å…ˆè°ƒç”¨ WSAStartup åˆå§‹åŒ– Winsock ç¯å¢ƒã€‚
 		if (!bInitSockEnv())
 		{
-			MessageBox(NULL, _T("ÎŞ·¨³õÊ¼»¯Ì×½Ó×Ö»·¾³£¬Çë¼ì²éÍøÂçÉèÖÃ"), _T("³õÊ¼»¯´íÎó£¡"), MB_OK | MB_ICONERROR);
+			MessageBox(NULL, _T("æ— æ³•åˆå§‹åŒ–å¥—æ¥å­—ç¯å¢ƒï¼Œè¯·æ£€æŸ¥ç½‘ç»œè®¾ç½®"), _T("åˆå§‹åŒ–é”™è¯¯ï¼"), MB_OK | MB_ICONERROR);
 			exit(0);
 		}
 		m_vecBuffer.resize(BUFFER_SIZE);
 		memset(m_vecBuffer.data(), 0, BUFFER_SIZE);
 	}
 
-	// ¿½±´¹¹ÔìºÍ¸³ÖµÔËËã·û·ÅÔÚ private ÖĞ£¬Ä¿µÄÊÇ½ûÖ¹Íâ²¿¸´ÖÆµ¥Àı¶ÔÏó¡£
+	// æ‹·è´æ„é€ å’Œèµ‹å€¼è¿ç®—ç¬¦æ”¾åœ¨ private ä¸­ï¼Œç›®çš„æ˜¯ç¦æ­¢å¤–éƒ¨å¤åˆ¶å•ä¾‹å¯¹è±¡ã€‚
 	CClientSocket(const CClientSocket&) {}
 	CClientSocket& operator=(const CClientSocket& ss)
 	{
@@ -352,25 +352,25 @@ private:
 
 	~CClientSocket()
 	{
-		// ¹Ø±Õ¼àÌı socket£¬²¢ÊÍ·Å Winsock »·¾³¡£
+		// å…³é—­ç›‘å¬ socketï¼Œå¹¶é‡Šæ”¾ Winsock ç¯å¢ƒã€‚
 		closesocket(m_Sock);
 		WSACleanup();
 	}
 
-	// ³õÊ¼»¯ Windows socket »·¾³¡£
-	// WSAStartup ³É¹¦ºó£¬ºóÃæµÄ socket/bind/listen/accept ²ÅÄÜÕı³£Ê¹ÓÃ¡£
+	// åˆå§‹åŒ– Windows socket ç¯å¢ƒã€‚
+	// WSAStartup æˆåŠŸåï¼Œåé¢çš„ socket/bind/listen/accept æ‰èƒ½æ­£å¸¸ä½¿ç”¨ã€‚
 	BOOL bInitSockEnv()
 	{
 		WSADATA data;
-		if (WSAStartup(MAKEWORD(1, 1), &data) != 0)//TODO£º·µ»ØÖµ´¦Àí
+		if (WSAStartup(MAKEWORD(1, 1), &data) != 0)//TODOï¼šè¿”å›å€¼å¤„ç†
 		{
 			return FALSE;
 		}
 		return TRUE;
 	}
 
-	// ÊÍ·Åµ¥Àı¶ÔÏó¡£
-	// delete »á´¥·¢Îö¹¹º¯Êı£¬´Ó¶ø closesocket ºÍ WSACleanup¡£
+	// é‡Šæ”¾å•ä¾‹å¯¹è±¡ã€‚
+	// delete ä¼šè§¦å‘ææ„å‡½æ•°ï¼Œä»è€Œ closesocket å’Œ WSACleanupã€‚
 	static void releaseInstance()
 	{
 		if (m_Instance != NULL)
@@ -381,27 +381,27 @@ private:
 		}
 	}
 
-	// ±£´æÈ«¾ÖÎ¨Ò»µÄ CClientSocket ¶ÔÏóµØÖ·¡£
+	// ä¿å­˜å…¨å±€å”¯ä¸€çš„ CClientSocket å¯¹è±¡åœ°å€ã€‚
 	static CClientSocket* m_Instance;
 	class CHelper
 	{
 	public:
-		// ³ÌĞòÆô¶¯Ê±£¬¾²Ì¬³ÉÔ± m_helper »áÏÈ¹¹Ôì¡£
-		// ÕâÀïÖ÷¶¯µ÷ÓÃ getInstance£¬ÈÃ socket ¹ÜÀí¶ÔÏóÌáÇ°´´½¨¡£
+		// ç¨‹åºå¯åŠ¨æ—¶ï¼Œé™æ€æˆå‘˜ m_helper ä¼šå…ˆæ„é€ ã€‚
+		// è¿™é‡Œä¸»åŠ¨è°ƒç”¨ getInstanceï¼Œè®© socket ç®¡ç†å¯¹è±¡æå‰åˆ›å»ºã€‚
 		CHelper()
 		{
 			CClientSocket::getInstance();
 		}
 
-		// ³ÌĞò½áÊøÊ±£¬¾²Ì¬³ÉÔ± m_helper »áÎö¹¹¡£
-		// ÕâÀïÊÍ·Åµ¥Àı¶ÔÏó£¬Íê³É×ÊÔ´ÇåÀí¡£
+		// ç¨‹åºç»“æŸæ—¶ï¼Œé™æ€æˆå‘˜ m_helper ä¼šææ„ã€‚
+		// è¿™é‡Œé‡Šæ”¾å•ä¾‹å¯¹è±¡ï¼Œå®Œæˆèµ„æºæ¸…ç†ã€‚
 		~CHelper()
 		{
 			CClientSocket::releaseInstance();
 		}
 	};
 
-	// ¸¨ÖúÊÍ·Åµ¥ÀıµÄ¾²Ì¬¶ÔÏó¡£
+	// è¾…åŠ©é‡Šæ”¾å•ä¾‹çš„é™æ€å¯¹è±¡ã€‚
 	static CHelper m_helper;
 };
 
