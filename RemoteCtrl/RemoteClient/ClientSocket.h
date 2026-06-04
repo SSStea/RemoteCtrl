@@ -343,7 +343,7 @@ private:
 	}
 
 	// 拷贝构造和赋值运算符放在 private 中，目的是禁止外部复制单例对象。
-	CClientSocket(const CClientSocket&) {}
+	CClientSocket(const CClientSocket& ss) {}
 	CClientSocket& operator=(const CClientSocket& ss)
 	{
 		m_Sock = ss.m_Sock;
