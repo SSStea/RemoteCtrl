@@ -70,17 +70,19 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 public:
-	afx_msg void OnBnClickedBtnTest();
 	DWORD m_server_address;
 	CString m_nPort;
+	CTreeCtrl m_Tree;
+	CListCtrl m_List;
+
+	afx_msg void OnBnClickedBtnTest();
+	
 	// 获取文件目录信息
 	afx_msg void OnBnClickedBtnFileinfo();
 	// 单双击显示目录
-	CTreeCtrl m_Tree;
 	afx_msg void OnNMDblclkTreeDir(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnNMClickTreeDir(NMHDR* pNMHDR, LRESULT* pResult);
 	// 显示文件
-	CListCtrl m_List;
 	afx_msg void OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnDownloadFile();
 	afx_msg void OnDeleteFile();
