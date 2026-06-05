@@ -67,6 +67,200 @@ LRESULT CClientController::SendMessage(MSG msg)
 	return info.result;
 }
 
+void CClientController::UpdataAddress(int nIP, int nPort)
+{
+	CClientSocket::getInstance()->UpdataAddress(nIP, nPort);
+}
+
+int CClientController::dealCommand()
+{
+	return CClientSocket::getInstance()->dealCommand();
+}
+
+void CClientController::CloseSocket()
+{
+	CClientSocket::getInstance()->CloseSocket();
+}
+
+int CClientController::SendCommandPacket(int nCmd, bool bAutoClose, BYTE* pData, size_t nLength)
+{
+	CPacket pack(nCmd, pData, nLength);
+
+	CClientSocket* pClient = CClientSocket::getInstance();
+	if (!pClient->bInitSocket())
+	{
+		return false;
+	}
+	pClient->bSend(pack);
+
+	int nRetCmd = dealCommand();
+	TRACE("ack: %d\r\n", nRetCmd);
+	if (bAutoClose)
+	{
+		CloseSocket();
+	}
+	return nRetCmd;
+}
+
+int CClientController::loadImage(CImage& image)
+{
+	CClientSocket* pClient = CClientSocket::getInstance();
+	return CEdoyunTool::nBytes2Image(image, pClient->getPacket().strData.c_str());
+}
+
+int CClientController::DonwloadFile(CString strPath)
+{
+	CFileDialog cFileDlg(
+		FALSE,
+		NULL,
+		strPath,
+		OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
+		NULL,
+		&m_remoteDlg);//开启一个保存文件的Dialog
+
+	if (cFileDlg.DoModal() == IDOK)
+	{
+		m_strRemoteFilePath = strPath;
+		m_strLocalFilePath = cFileDlg.GetPathName();
+
+		m_hThreadDownload = (HANDLE)_beginthread(&CClientController::threadDownloadFileEntry, 0, this);
+
+		if (WaitForSingleObject(m_hThreadDownload, 0) != WAIT_TIMEOUT)
+		{
+			return -1;
+		}
+
+		m_remoteDlg.BeginWaitCursor();
+		m_statusDlg.m_info.SetWindowText(_T("命令正在执行中！！"));
+		m_statusDlg.ShowWindow(SW_SHOW);
+		m_statusDlg.CenterWindow(&m_remoteDlg);
+		m_statusDlg.SetActiveWindow();
+	}
+
+	return 0;
+}
+
+void CClientController::threadDownloadFileEntry(void* arg)
+{
+	CClientController* thiz = (CClientController*)arg;
+	thiz->threadDownloadFile();
+
+	_endthread();
+}
+
+void CClientController::threadDownloadFile()
+{
+	Sleep(50);
+
+	FILE* pFile = fopen(m_strLocalFilePath, "wb+");
+	if (pFile == NULL)
+	{
+		AfxMessageBox("本地无权限保存该文件，或文件无法创建");
+		m_statusDlg.ShowWindow(SW_HIDE);
+		m_remoteDlg.EndWaitCursor();
+		return;
+	}
+
+	CClientSocket* pClient = CClientSocket::getInstance();
+	do 
+	{
+		int nRetCmd = SendCommandPacket(
+			4,
+			false,
+			(BYTE*)(LPCSTR)m_strRemoteFilePath,
+			m_strRemoteFilePath.GetLength()
+		);
+
+		if (nRetCmd < 0)
+		{
+			AfxMessageBox("执行下载命令失败！！");
+			TRACE("ret = %d\r\n", nRetCmd);
+			break;
+		}
+
+		long long lFileLength = *(long long*)pClient->getPacket().strData.c_str();
+		if (lFileLength == 0)
+		{
+			AfxMessageBox("文件长度为零，或着无法读取文件！！");
+			break;
+		}
+
+		long long lCount = 0;
+		while (lCount < lFileLength)
+		{
+			nRetCmd = pClient->dealCommand();
+			if (nRetCmd < 0)
+			{
+				AfxMessageBox("传输失败！！");
+				TRACE("传输失败：ret = %d", nRetCmd);
+				break;
+			}
+			fwrite(pClient->getPacket().strData.c_str(), 1,
+				pClient->getPacket().strData.size(), pFile);
+			lCount += pClient->getPacket().strData.size();
+		}
+
+	} while (false);
+
+	fclose(pFile);
+	pClient->CloseSocket();
+	m_statusDlg.ShowWindow(SW_HIDE);
+	m_remoteDlg.EndWaitCursor();
+	m_remoteDlg.MessageBox(_T("下载完成！！"), _T("完成"));
+}
+
+void CClientController::StartWatchScreen()
+{
+//由于每点击一次都会开启一个线程，新旧线程m_image会有冲突，所以用m_bIsClosed表示上次的监视线程是否	
+//已经关闭，在threadWatchData线程函数中判断，如果已经关闭再次点击就不再进入老线程
+	m_bIsClosed = false;
+
+	m_hThreadWatch = (HANDLE)_beginthread(CClientController::threadWatchScreenEntry, 0, this);
+
+	m_watchDlg.DoModal();
+	m_bIsClosed = true;
+	WaitForSingleObject(m_hThreadWatch, 500);
+}
+
+void CClientController::threadWatchScreenEntry(void* arg)
+{
+	CClientController* thiz = (CClientController*)arg;
+	thiz->threadWatchScreen();
+
+	_endthread();
+}
+
+void CClientController::threadWatchScreen()
+{
+	Sleep(50);
+
+	ULONGLONG ulTick = GetTickCount64();
+	while (!m_bIsClosed)
+	{
+		if (GetTickCount64() - ulTick < 150)
+		{
+			Sleep(DWORD(GetTickCount64() - ulTick));
+		}
+
+		if (!m_remoteDlg.bIsFull())
+		{
+			int nRetCmd = SendCommandPacket(6);
+			if (nRetCmd == 6)
+			{
+				if (loadImage(m_remoteDlg.getImage()) == 0)
+				{
+					m_remoteDlg.setImageStatus(true);
+				}
+			}
+			else
+			{
+				TRACE("获取图片失败！%d\r\n", nRetCmd);
+			}
+		}
+		Sleep(1);
+	}
+}
+
 unsigned __stdcall CClientController::threadMsgHandleEntry(void* arg)
 {
 	CClientController* thiz = (CClientController*)arg;
@@ -114,12 +308,16 @@ void CClientController::threadMsgHandle()
 
 LRESULT CClientController::OnSendPack(UINT nMsg, WPARAM wParam, LPARAM lParam)
 {
-	return LRESULT();
+	CClientSocket* pClient = CClientSocket::getInstance();
+	CPacket* pack = (CPacket*)wParam;
+	return pClient->bSend(*pack);
 }
 
 LRESULT CClientController::OnSendData(UINT nMsg, WPARAM wParam, LPARAM lParam)
 {
-	return LRESULT();
+	CClientSocket* pClient = CClientSocket::getInstance();
+	char* pBuffer = (char*)wParam;
+	return pClient->bSend(pBuffer, (int)lParam);
 }
 
 LRESULT CClientController::OnShowStatus(UINT nMsg, WPARAM wParam, LPARAM lParam)

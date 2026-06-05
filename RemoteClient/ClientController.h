@@ -4,6 +4,7 @@
 #include "WatchDialog.h"
 #include "RemoteClientDlg.h"
 #include "Resource.h"
+#include "EdoyunTool.h"
 #include <map>
 
 #define WM_SEND_PACK	(WM_USER+1)//发送包数据
@@ -26,11 +27,36 @@ public:
 	//发送消息
 	LRESULT SendMessage(MSG msg);
 
+	//更新网络服务器的地址、端口
+	void UpdataAddress(int nIP, int nPort);
+
+	//处理命令
+	int dealCommand();
+
+	//关闭套接字
+	void CloseSocket();
+
+	//发送命令包
+	//1 查看磁盘分区 2 查看指定目录下文件 3 打开文件 4 下载文件
+	//5 操作鼠标 6 发送屏幕内容 7 锁住机器 8 解锁 9 删除文件
+	//返回值是命令号，如果小于0则错误
+	int SendCommandPacket(int nCmd, bool bAutoClose = true, BYTE* pData = NULL, size_t nLength = 0);
+
+	//将数据装填进图像
+	int loadImage(CImage& image);
+
+	int DonwloadFile(CString strPath);
+
+	void StartWatchScreen();
+
 protected:
 	CClientController():m_statusDlg(&m_remoteDlg), m_watchDlg(&m_remoteDlg)
 	{
-		m_hThread = INVALID_HANDLE_VALUE;
-		m_nThreadID = -1;
+		m_hThreadDownload	= INVALID_HANDLE_VALUE;
+		m_hThreadWatch		= INVALID_HANDLE_VALUE;
+		m_hThread			= INVALID_HANDLE_VALUE;
+		m_bIsClosed			= true;
+		m_nThreadID			= -1;
 	}
 
 	~CClientController()
@@ -40,6 +66,12 @@ protected:
 
 	static unsigned __stdcall threadMsgHandleEntry(void* arg);
 	void threadMsgHandle();
+
+	static void threadDownloadFileEntry(void* arg);
+	void threadDownloadFile();
+
+	static void threadWatchScreenEntry(void* arg);
+	void threadWatchScreen();
 
 	static void releaseInstance()
 	{
@@ -90,6 +122,13 @@ private:
 
 	HANDLE				m_hThread;
 	unsigned			m_nThreadID;
+
+	HANDLE				m_hThreadDownload;
+	CString				m_strRemoteFilePath;
+	CString				m_strLocalFilePath;
+
+	HANDLE				m_hThreadWatch;
+	bool				m_bIsClosed;//监视是否关闭
 
 	//控制单例
 	static CClientController* m_Instance;

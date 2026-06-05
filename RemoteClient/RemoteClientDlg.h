@@ -26,19 +26,12 @@ public:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 
 private:
-	static void threadEntryForWatchData(void* arg);
-	void threadWatchData();
-	static void threadEntryForDownload(void* arg);
-	void threadDownFile();
 	void LoadFileCurrent();
 	void LoadFileInfo();
-	CString GetPath(HTREEITEM hTree);
-	void DeleteTreeChildrenItem(HTREEITEM hTree);
 
-	//1 查看磁盘分区 2 查看指定目录下文件 3 打开文件 4 下载文件
-	//5 操作鼠标 6 发送屏幕内容 7 锁住机器 8 解锁 9 删除文件
-	//返回值是命令号，如果小于0则错误
-	int SendCommandPacket(int nCmd, bool bAutoClose = true, BYTE* pData = NULL, size_t nLength = 0);
+	CString GetPath(HTREEITEM hTree);
+
+	void DeleteTreeChildrenItem(HTREEITEM hTree);
 
 public:
 	bool bIsFull() const
@@ -61,7 +54,6 @@ protected:
 	CStatusDlg m_dlgStatus;
 	CImage m_image;//图像缓存
 	bool m_bIsFull;//缓存是否有数据 true表示有 false表示没有
-	bool m_bIsClosed;//监视是否关闭
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
@@ -91,4 +83,6 @@ public:
 	afx_msg LRESULT OnSendPacket(WPARAM wParam, LPARAM lParam);//2 ==> 定义自定义消息响应函数
 	afx_msg void OnBnClickedBtnStartWatch();
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	afx_msg void OnIpnFieldchangedIpaddressServ(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnEnChangeEditPort();
 };
