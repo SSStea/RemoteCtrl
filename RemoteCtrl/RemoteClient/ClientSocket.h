@@ -3,6 +3,8 @@
 #include "framework.h"
 #include <string>
 #include <vector>
+#include <list>
+#include <map>
 
 #pragma pack(push)
 #pragma pack(1)
@@ -18,6 +20,7 @@ public:
 		sCmd = packet.sCmd;
 		strData = packet.strData;
 		sSum = packet.sSum;
+		hEvent = packet.hEvent;
 	}
 
 	CPacket& operator=(const CPacket& packet)
@@ -31,10 +34,11 @@ public:
 		sCmd = packet.sCmd;
 		strData = packet.strData;
 		sSum = packet.sSum;
+		hEvent = packet.hEvent;
 	}
 
 	//解析包的构造函数
-	CPacket(const BYTE* pData, size_t& nSize)
+	CPacket(const BYTE* pData, size_t& nSize):hEvent(INVALID_HANDLE_VALUE)
 	{
 		size_t pos = 0;//代表目前数据解析到哪个位置
 		for (; pos < nSize; pos++)
@@ -85,7 +89,7 @@ public:
 	}
 
 	//构造包的构造函数
-	CPacket(WORD nCmd, const BYTE* pData, size_t nSize)
+	CPacket(WORD nCmd, const BYTE* pData, size_t nSize, HANDLE hEvent)
 	{
 		sHead = 0xFEFF;
 		nLength = (DWORD)nSize + 4;//数据长度+命令长度+校验长度
@@ -106,6 +110,8 @@ public:
 		{
 			sSum += BYTE(strData[j]) & 0xFF;
 		}
+
+		this->hEvent = hEvent;
 	}
 
 	//获取包的大小
@@ -145,7 +151,7 @@ public:
 	WORD		sCmd;		//控制命令
 	std::string strData;	//包数据
 	WORD		sSum;		//校验
-	//std::string strOut;		//整个包的数据
+	HANDLE		hEvent;
 };
 #pragma pack(pop)
 
@@ -336,11 +342,13 @@ public:
 	}
 
 private:
-	SOCKET				m_Sock;
-	CPacket				m_packet;
-	std::vector<char>	m_vecBuffer;
-	int					m_nIP;
-	int					m_nPort;
+	SOCKET									m_Sock;
+	CPacket									m_packet;
+	std::vector<char>						m_vecBuffer;
+	int										m_nIP;
+	int										m_nPort;
+	std::map<HANDLE, std::list<CPacket>>	m_mapAck;//处理来自服务端的包的映射
+	std::list<CPacket>						m_lstSendPkt;//要发送的数据
 
 	// 构造函数私有化，是单例模式的关键：
 	// 外部不能直接 new CServSocket，只能通过 getInstance 获取唯一对象。
@@ -371,6 +379,9 @@ private:
 		closesocket(m_Sock);
 		WSACleanup();
 	}
+
+	static void threadPktHandleEntry(void* arg);
+	void threadPktHandle();
 
 	// 初始化 Windows socket 环境。
 	// WSAStartup 成功后，后面的 socket/bind/listen/accept 才能正常使用。

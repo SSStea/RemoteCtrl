@@ -31,3 +31,60 @@ std::string GetSockErrInfo(int wsaErrcode)
 
 	return ret;
 }
+
+void CClientSocket::threadPktHandleEntry(void* arg)
+{
+	CClientSocket* thiz = (CClientSocket*)arg;
+	thiz->threadPktHandle();
+
+	_endthread();
+}
+
+void CClientSocket::threadPktHandle()
+{
+	if (!bInitSocket())
+	{
+		return;
+	}
+	std::string strBuffer;
+	strBuffer.resize(BUFFER_SIZE);
+	char* pBuffer = (char*)strBuffer.c_str();
+	int nIndex = 0;
+
+	while (m_Sock != INVALID_SOCKET)
+	{
+		if (m_lstSendPkt.size() > 0)
+		{
+			CPacket& head = m_lstSendPkt.front();
+			if (!bSend(head))
+			{
+				TRACE("发送失败！！");
+				continue;
+			}
+
+			auto pr = m_mapAck.insert(std::pair<HANDLE, 
+				std::list<CPacket>>(head.hEvent, std::list<CPacket>()));
+
+			int nRecvLen = recv(m_Sock, pBuffer + nIndex, BUFFER_SIZE - nIndex, 0);
+			if (nRecvLen > 0 || nIndex > 0)
+			{
+				nIndex += nRecvLen;
+				size_t nSize = (size_t)nIndex;
+				CPacket pack((BYTE*)pBuffer, nSize);
+				if (nSize > 0)
+				{
+					//TODO:通知对应事件
+					pack.hEvent = head.hEvent;
+					pr.first->second.push_back(pack);
+					SetEvent(head.hEvent);
+				}
+			}
+			else if (nRecvLen <= 0 && nIndex <= 0)
+			{
+				CloseSocket();
+			}
+
+			m_lstSendPkt.pop_front();
+		}
+	}
+}
