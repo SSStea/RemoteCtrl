@@ -133,7 +133,7 @@ void CWatchDialog::OnLButtonDblClk(UINT nFlags, CPoint point)
 		event.nButton = 0;//左键
 		event.nAction = 1;//双击
 
-		CClientController::getInstance()->SendCommandPacket(5, true, (BYTE*)&event, sizeof(event));
+		CClientController::getInstance()->SendCommandPacket(5, (BYTE*)&event, sizeof(event));
 	}
 	CDialog::OnLButtonDblClk(nFlags, point);
 }
@@ -152,7 +152,7 @@ void CWatchDialog::OnLButtonDown(UINT nFlags, CPoint point)
 		event.nButton = 0;//左键
 		event.nAction = 2;//按下
 
-		CClientController::getInstance()->SendCommandPacket(5, true, (BYTE*)&event, sizeof(event));
+		CClientController::getInstance()->SendCommandPacket(5, (BYTE*)&event, sizeof(event));
 	}
 
 	CDialog::OnLButtonDown(nFlags, point);
@@ -170,7 +170,7 @@ void CWatchDialog::OnLButtonUp(UINT nFlags, CPoint point)
 		event.nButton = 0;//左键
 		event.nAction = 3;//弹起
 
-		CClientController::getInstance()->SendCommandPacket(5, true, (BYTE*)&event, sizeof(event));
+		CClientController::getInstance()->SendCommandPacket(5, (BYTE*)&event, sizeof(event));
 	}
 
 	CDialog::OnLButtonUp(nFlags, point);
@@ -188,7 +188,7 @@ void CWatchDialog::OnRButtonDblClk(UINT nFlags, CPoint point)
 		event.nButton = 1;//右键
 		event.nAction = 1;//双击
 
-		CClientController::getInstance()->SendCommandPacket(5, true, (BYTE*)&event, sizeof(event));
+		CClientController::getInstance()->SendCommandPacket(5, (BYTE*)&event, sizeof(event));
 	}
 
 	CDialog::OnRButtonDblClk(nFlags, point);
@@ -206,7 +206,7 @@ void CWatchDialog::OnRButtonDown(UINT nFlags, CPoint point)
 		event.nButton = 1;//右键
 		event.nAction = 2;//按下， TODO：服务端要做对应修改
 
-		CClientController::getInstance()->SendCommandPacket(5, true, (BYTE*)&event, sizeof(event));
+		CClientController::getInstance()->SendCommandPacket(5, (BYTE*)&event, sizeof(event));
 	}
 
 	CDialog::OnRButtonDown(nFlags, point);
@@ -224,7 +224,7 @@ void CWatchDialog::OnRButtonUp(UINT nFlags, CPoint point)
 		event.nButton = 1;//右键
 		event.nAction = 3;//弹起
 
-		CClientController::getInstance()->SendCommandPacket(5, true, (BYTE*)&event, sizeof(event));
+		CClientController::getInstance()->SendCommandPacket(5, (BYTE*)&event, sizeof(event));
 	}
 
 	CDialog::OnRButtonUp(nFlags, point);
@@ -245,7 +245,7 @@ void CWatchDialog::OnMouseMove(UINT nFlags, CPoint point)
 		//TODO:网络通信和Client对话框有耦合，这是一个设计隐患，想要通信必须要调用对话框
 		//对话框是V层（视图层），通信是C层（控制层），对话框依赖通信：V ==> C是可以的，但是
 		//如果通信却要依赖对话框：C ==> V这样是不可以的，后续需要改善
-		CClientController::getInstance()->SendCommandPacket(5, true, (BYTE*)&event, sizeof(event));
+		CClientController::getInstance()->SendCommandPacket(5, (BYTE*)&event, sizeof(event));
 	}
 
 	CDialog::OnMouseMove(nFlags, point);
@@ -266,7 +266,7 @@ void CWatchDialog::OnStnClickedWatch()
 		event.nButton = 0;//左键
 		event.nAction = 0;//单击
 
-		CClientController::getInstance()->SendCommandPacket(5, true, (BYTE*)&event, sizeof(event));
+		CClientController::getInstance()->SendCommandPacket(5, (BYTE*)&event, sizeof(event));
 	}
 }
 

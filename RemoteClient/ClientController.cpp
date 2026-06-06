@@ -118,14 +118,14 @@ LRESULT CClientController::OnSendPack(UINT nMsg, WPARAM wParam, LPARAM lParam)
 {
 	CClientSocket* pClient = CClientSocket::getInstance();
 	CPacket* pack = (CPacket*)wParam;
-	return pClient->bSend(*pack);
+	return LRESULT();//pClient->bSendPkt(*pack);
 }
 
 LRESULT CClientController::OnSendData(UINT nMsg, WPARAM wParam, LPARAM lParam)
 {
 	CClientSocket* pClient = CClientSocket::getInstance();
 	char* pBuffer = (char*)wParam;
-	return pClient->bSend(pBuffer, (int)lParam);
+	return LRESULT();//pClient->bSend(pBuffer, (int)lParam);
 }
 
 LRESULT CClientController::OnShowStatus(UINT nMsg, WPARAM wParam, LPARAM lParam)
@@ -153,24 +153,30 @@ void CClientController::CloseSocket()
 	CClientSocket::getInstance()->CloseSocket();
 }
 
-int CClientController::SendCommandPacket(int nCmd, bool bAutoClose, BYTE* pData, size_t nLength)
+int CClientController::SendCommandPacket(
+	int nCmd,
+	BYTE* pData,
+	size_t nLength,
+	std::list<CPacket>* plstAckPkts
+)
 {
-	CClientSocket* pClient = CClientSocket::getInstance();
-	if (!pClient->bInitSocket())
-	{
-		return false;
-	}
 	HANDLE hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-	CPacket pack(nCmd, pData, nLength, hEvent);
-	pClient->bSend(pack);
-
-	int nRetCmd = dealCommand();
-	TRACE("ack: %d\r\n", nRetCmd);
-	if (bAutoClose)
+	CPacket reqPkt(nCmd, pData, nLength, hEvent);//请求包
+	std::list<CPacket> lstAckPkts;//应答结果包
+	if (plstAckPkts == NULL)
 	{
-		CloseSocket();
+		plstAckPkts = &lstAckPkts;
 	}
-	return nRetCmd;
+
+	CClientSocket* pClient = CClientSocket::getInstance();
+	pClient->bSendPkt(reqPkt, *plstAckPkts);
+
+	if (plstAckPkts->size() > 0)
+	{
+		return plstAckPkts->front().sCmd;
+	}
+
+	return -1;
 }
 
 int CClientController::loadImage(CImage& image)
@@ -237,7 +243,6 @@ void CClientController::threadDownloadFile()
 	{
 		int nRetCmd = SendCommandPacket(
 			4,
-			false,
 			(BYTE*)(LPCSTR)m_strRemoteFilePath,
 			m_strRemoteFilePath.GetLength()
 		);
@@ -315,10 +320,13 @@ void CClientController::threadWatchScreen()
 
 		if (!m_watchDlg.bIsFull())
 		{
-			int nRetCmd = SendCommandPacket(6);
+			std::list<CPacket> lstAckPkts;
+			int nRetCmd = SendCommandPacket(6, NULL, 0, &lstAckPkts);
 			if (nRetCmd == 6)
 			{
-				if (loadImage(m_remoteDlg.getImage()) == 0)
+				int nLoadRet = CEdoyunTool::nBytes2Image(m_remoteDlg.getImage(),
+					lstAckPkts.front().strData);
+				if (nLoadRet == 0)
 				{
 					m_watchDlg.setImageStatus(true);
 				}
