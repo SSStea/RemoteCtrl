@@ -68,6 +68,76 @@ LRESULT CClientController::SendMessage(MSG msg)
 	return info.result;
 }
 
+
+unsigned __stdcall CClientController::threadMsgHandleEntry(void* arg)
+{
+	CClientController* thiz = (CClientController*)arg;
+	thiz->threadMsgHandle();
+
+	_endthreadex(0);
+	return 0;
+}
+
+void CClientController::threadMsgHandle()
+{
+	MSG msg;
+	while (::GetMessage(&msg, NULL, 0, 0))
+	{
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+		if (msg.message == WM_SEND_MESSAGE)
+		{
+			MSGINFO* pMsg = (MSGINFO*)msg.wParam;
+			HANDLE hEvent = (HANDLE)msg.lParam;
+
+			auto it = m_mapMsgFunc.find(pMsg->msg.message);
+			if (it != m_mapMsgFunc.end())
+			{
+				//执行消息处理函数
+				pMsg->result = (this->*it->second)(pMsg->msg.message, pMsg->msg.wParam,
+					pMsg->msg.lParam);
+			}
+			else
+			{
+				pMsg->result = -1;
+			}
+			SetEvent(hEvent);
+		}
+		else
+		{
+			auto it = m_mapMsgFunc.find(msg.message);
+			if (it != m_mapMsgFunc.end())
+			{
+				(this->*it->second)(msg.message, msg.wParam, msg.lParam);
+			}
+		}
+	}
+}
+
+LRESULT CClientController::OnSendPack(UINT nMsg, WPARAM wParam, LPARAM lParam)
+{
+	CClientSocket* pClient = CClientSocket::getInstance();
+	CPacket* pack = (CPacket*)wParam;
+	return pClient->bSend(*pack);
+}
+
+LRESULT CClientController::OnSendData(UINT nMsg, WPARAM wParam, LPARAM lParam)
+{
+	CClientSocket* pClient = CClientSocket::getInstance();
+	char* pBuffer = (char*)wParam;
+	return pClient->bSend(pBuffer, (int)lParam);
+}
+
+LRESULT CClientController::OnShowStatus(UINT nMsg, WPARAM wParam, LPARAM lParam)
+{
+	return m_statusDlg.ShowWindow(SW_SHOW);
+}
+
+LRESULT CClientController::OnShowWatcher(UINT nMsg, WPARAM wParam, LPARAM lParam)
+{
+	return m_watchDlg.DoModal();
+}
+
 void CClientController::UpdataAddress(int nIP, int nPort)
 {
 	CClientSocket::getInstance()->UpdataAddress(nIP, nPort);
@@ -85,13 +155,13 @@ void CClientController::CloseSocket()
 
 int CClientController::SendCommandPacket(int nCmd, bool bAutoClose, BYTE* pData, size_t nLength)
 {
-	CPacket pack(nCmd, pData, nLength);
-
 	CClientSocket* pClient = CClientSocket::getInstance();
 	if (!pClient->bInitSocket())
 	{
 		return false;
 	}
+	HANDLE hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	CPacket pack(nCmd, pData, nLength, hEvent);
 	pClient->bSend(pack);
 
 	int nRetCmd = dealCommand();
@@ -262,71 +332,3 @@ void CClientController::threadWatchScreen()
 	}
 }
 
-unsigned __stdcall CClientController::threadMsgHandleEntry(void* arg)
-{
-	CClientController* thiz = (CClientController*)arg;
-	thiz->threadMsgHandle();
-
-	_endthreadex(0);
-	return 0;
-}
-
-void CClientController::threadMsgHandle()
-{
-	MSG msg;
-	while (::GetMessage(&msg, NULL, 0, 0))
-	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-		if (msg.message == WM_SEND_MESSAGE)
-		{
-			MSGINFO* pMsg = (MSGINFO*)msg.wParam;
-			HANDLE hEvent = (HANDLE)msg.lParam;
-
-			auto it = m_mapMsgFunc.find(pMsg->msg.message);
-			if (it != m_mapMsgFunc.end())
-			{
-				//执行消息处理函数
-				pMsg->result = (this->*it->second)(pMsg->msg.message, pMsg->msg.wParam, 
-												pMsg->msg.lParam);
-			}
-			else
-			{
-				pMsg->result = -1;
-			}
-			SetEvent(hEvent);
-		}
-		else
-		{
-			auto it = m_mapMsgFunc.find(msg.message);
-			if (it != m_mapMsgFunc.end())
-			{
-				(this->*it->second)(msg.message, msg.wParam, msg.lParam);
-			}
-		}
-	}
-}
-
-LRESULT CClientController::OnSendPack(UINT nMsg, WPARAM wParam, LPARAM lParam)
-{
-	CClientSocket* pClient = CClientSocket::getInstance();
-	CPacket* pack = (CPacket*)wParam;
-	return pClient->bSend(*pack);
-}
-
-LRESULT CClientController::OnSendData(UINT nMsg, WPARAM wParam, LPARAM lParam)
-{
-	CClientSocket* pClient = CClientSocket::getInstance();
-	char* pBuffer = (char*)wParam;
-	return pClient->bSend(pBuffer, (int)lParam);
-}
-
-LRESULT CClientController::OnShowStatus(UINT nMsg, WPARAM wParam, LPARAM lParam)
-{
-	return m_statusDlg.ShowWindow(SW_SHOW);
-}
-
-LRESULT CClientController::OnShowWatcher(UINT nMsg, WPARAM wParam, LPARAM lParam)
-{
-	return m_watchDlg.DoModal();
-}
