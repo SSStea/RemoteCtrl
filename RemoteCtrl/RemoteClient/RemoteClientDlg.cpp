@@ -232,8 +232,7 @@ void CRemoteClientDlg::LoadFileCurrent()
 
 	CClientController* pController = CClientController::getInstance();
 	int nCmd = pController->SendCommandPacket(
-		2, 
-		false, 
+		2,  
 		(BYTE*)(LPCSTR)strPath, 
 		strPath.GetLength()
 	);
@@ -281,7 +280,6 @@ void CRemoteClientDlg::LoadFileInfo()
 	CClientController* pController = CClientController::getInstance();
 	int nCmd = pController->SendCommandPacket(
 		2, 
-		false, 
 		(BYTE*)(LPCSTR)strPath, 
 		strPath.GetLength()
 	);
@@ -420,7 +418,6 @@ void CRemoteClientDlg::OnDeleteFile()
 
 	int nRetCmd = CClientController::getInstance()->SendCommandPacket(
 		9, 
-		true, 
 		(BYTE*)(LPCSTR)strFilePath, 
 		strFilePath.GetLength()
 	);
@@ -445,7 +442,6 @@ void CRemoteClientDlg::OnRunFile()
 
 	int nRetCmd = CClientController::getInstance()->SendCommandPacket(
 		3, 
-		true, 
 		(BYTE*)(LPCSTR)strFilePath, 
 		strFilePath.GetLength()
 	);

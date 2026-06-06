@@ -42,10 +42,6 @@ void CClientSocket::threadPktHandleEntry(void* arg)
 
 void CClientSocket::threadPktHandle()
 {
-	if (!bInitSocket())
-	{
-		return;
-	}
 	std::string strBuffer;
 	strBuffer.resize(BUFFER_SIZE);
 	char* pBuffer = (char*)strBuffer.c_str();
@@ -55,10 +51,11 @@ void CClientSocket::threadPktHandle()
 	{
 		if (m_lstSendPkt.size() > 0)
 		{
+			TRACE("lst Send Size = %d\r\n", m_lstSendPkt.size());
 			CPacket& head = m_lstSendPkt.front();
 			if (!bSend(head))
 			{
-				TRACE("发送失败！！");
+				TRACE("发送失败！！\r\n");
 				continue;
 			}
 
@@ -87,4 +84,5 @@ void CClientSocket::threadPktHandle()
 			m_lstSendPkt.pop_front();
 		}
 	}
+	CloseSocket();
 }

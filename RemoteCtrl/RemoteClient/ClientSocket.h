@@ -282,26 +282,31 @@ public:
 		return -1;
 	}
 
-	// 向当前已连接的客户端发送数据。
-	bool bSend(const char* pData, int nSize)
+
+	bool bSendPkt(const CPacket& reqPkt, std::list<CPacket>& out_lstAckPkts)
 	{
-		if (m_Sock == -1)
+		if (m_Sock == INVALID_SOCKET)
 		{
-			return false;
-		}
-		return send(m_Sock, pData, nSize, 0) > 0;
-	}
-	bool bSend(const CPacket& pack)
-	{
-		TRACE("m_Sock = %d\r\n", m_Sock);
-		if (m_Sock == -1)
-		{
-			return false;
+			if (!bInitSocket())
+			{
+				return false;
+			}
+			_beginthread(&CClientSocket::threadPktHandleEntry, 0, this);
 		}
 
-		std::string strOut;
-		pack.Data(strOut);
-		return send(m_Sock, strOut.c_str(), (int)strOut.size(), 0) > 0;
+		m_lstSendPkt.push_back(reqPkt);
+		WaitForSingleObject(reqPkt.hEvent, INFINITE);
+		auto it = m_mapAck.find(reqPkt.hEvent);
+		if (it != m_mapAck.end())
+		{ 
+			for (auto i = it->second.begin(); i != it->second.end(); i++)
+			{
+				out_lstAckPkts.push_back(*i);
+			}
+			m_mapAck.erase(it);
+			return true;
+		}
+		return false;
 	}
 
 	bool bGetFilePath(std::string& strPath)
@@ -337,8 +342,11 @@ public:
 
 	void UpdataAddress(int nIP, int nPort)
 	{
-		m_nIP = nIP;
-		m_nPort = nPort;
+		if(m_nIP != nIP || m_nPort != nPort)
+		{
+			m_nIP = nIP;
+			m_nPort = nPort;
+		}
 	}
 
 private:
@@ -352,7 +360,7 @@ private:
 
 	// 构造函数私有化，是单例模式的关键：
 	// 外部不能直接 new CServSocket，只能通过 getInstance 获取唯一对象。
-	CClientSocket() : m_nIP(INADDR_ANY), m_nPort(0)
+	CClientSocket() : m_nIP(INADDR_ANY), m_nPort(0), m_Sock(INVALID_SOCKET)
 	{
 		// Windows 下使用 socket 前，必须先调用 WSAStartup 初始化 Winsock 环境。
 		if (!bInitSockEnv())
@@ -362,6 +370,7 @@ private:
 		}
 		m_vecBuffer.resize(BUFFER_SIZE);
 		memset(m_vecBuffer.data(), 0, BUFFER_SIZE);
+
 	}
 
 	// 拷贝构造和赋值运算符放在 private 中，目的是禁止外部复制单例对象。
@@ -405,6 +414,29 @@ private:
 			m_Instance = NULL;
 			delete tmp;
 		}
+	}
+
+
+	// 向当前已连接的客户端发送数据。
+	bool bSend(const char* pData, int nSize)
+	{
+		if (m_Sock == -1)
+		{
+			return false;
+		}
+		return send(m_Sock, pData, nSize, 0) > 0;
+	}
+	bool bSend(const CPacket& pack)
+	{
+		TRACE("m_Sock = %d\r\n", m_Sock);
+		if (m_Sock == -1)
+		{
+			return false;
+		}
+
+		std::string strOut;
+		pack.Data(strOut);
+		return send(m_Sock, strOut.c_str(), (int)strOut.size(), 0) > 0;
 	}
 
 	// 保存全局唯一的 CClientSocket 对象地址。
