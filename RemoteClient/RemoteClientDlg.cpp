@@ -80,7 +80,6 @@ BEGIN_MESSAGE_MAP(CRemoteClientDlg, CDialogEx)
 	ON_COMMAND(ID_DOWNLOAD_FILE, &CRemoteClientDlg::OnDownloadFile)
 	ON_COMMAND(ID_DELETE_FILE, &CRemoteClientDlg::OnDeleteFile)
 	ON_COMMAND(ID_RUN_FILE, &CRemoteClientDlg::OnRunFile)
-	ON_MESSAGE(WM_SEND_PACKET, &CRemoteClientDlg::OnSendPacket)//3 ==> 注册消息：告诉系统消息Id对应的处理函数
 	ON_BN_CLICKED(IDC_BTN_START_WATCH, &CRemoteClientDlg::OnBnClickedBtnStartWatch)
 	ON_WM_TIMER()
 	ON_NOTIFY(IPN_FIELDCHANGED, IDC_IPADDRESS_SERV, &CRemoteClientDlg::OnIpnFieldchangedIpaddressServ)
@@ -129,7 +128,6 @@ BOOL CRemoteClientDlg::OnInitDialog()
 	m_dlgStatus.Create(IDD_DLG_STATUS, this);
 	m_dlgStatus.ShowWindow(SW_HIDE);
 
-	m_bIsFull = false;
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -456,49 +454,6 @@ void CRemoteClientDlg::OnRunFile()
 	{
 		AfxMessageBox("打开文件命令执行失败！！");
 	}
-}
-
-LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wParam, LPARAM lParam)//4 ==> 实现消息响应函数
-{
-	int nCmd = wParam >> 1;
-	int nRetCmd = 0;
-	switch (nCmd)
-	{
-	case 4:
-		{
-			CString strFilePath = (LPCSTR)lParam;
-			nRetCmd = CClientController::getInstance()->SendCommandPacket(
-				nCmd, 
-				wParam & 1, 
-				(BYTE*)(LPCSTR)strFilePath, 
-				strFilePath.GetLength()
-			);
-		}
-		break;
-	case 5:
-		nRetCmd = CClientController::getInstance()->SendCommandPacket(
-			nCmd, 
-			wParam & 1, 
-			(BYTE*)lParam, 
-			sizeof(MOUSEEVENT)
-		);
-		break;
-	case 6:
-	case 7:
-	case 8:
-		nRetCmd = CClientController::getInstance()->SendCommandPacket(
-			nCmd, 
-			wParam & 1, 
-			NULL, 
-			0
-		);
-		break;
-	default:
-		nRetCmd = -1;
-		break;
-	}
-	
-	return nRetCmd;
 }
 
 void CRemoteClientDlg::OnBnClickedBtnStartWatch()

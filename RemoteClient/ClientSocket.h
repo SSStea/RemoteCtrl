@@ -255,13 +255,16 @@ public:
 		while (true)
 		{
 			size_t len = recv(m_Sock, buffer + index, BUFFER_SIZE - (int)index, 0);
-			if (len <= 0 && index == 0)//表示没读到并且缓冲区里没数据
+			if ((int)len <= 0 && (int)index <= 0)//表示没读到并且缓冲区里没数据
 			{
 				return -1;
 			}
+			TRACE("recv len = %d(0x%08X) index = %d(0x%08X)\r\n", len, len, index, index);
 			index += len;//更新数据在buffer中的存储索引值index：将recv的数据长度len加到上一次的index
 			len = index;//将buffer存储的数据长度改为当前buffer存储数据的索引位置
+			TRACE("recv len = %d(0x%08X) index = %d(0x%08X)\r\n", len, len, index, index);
 			m_packet = CPacket((BYTE*)buffer, len);
+			TRACE("cmd = %d\r\n", m_packet.sCmd);
 			//按引用传入当前数据的长度len，将buffer解析，将数据封装为Packet并返回封装了的数据的长度len
 			if (len > 0)//如果解析到了数据
 			{

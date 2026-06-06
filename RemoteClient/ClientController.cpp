@@ -3,6 +3,7 @@
 
 std::map<UINT, CClientController::MSGFUNC> CClientController::m_mapMsgFunc;
 CClientController* CClientController::m_Instance = NULL;
+CClientController::CHelper CClientController::m_helper;
 
 CClientController* CClientController::getInstance()
 {
@@ -27,7 +28,7 @@ CClientController* CClientController::getInstance()
 		}
 	}
 
-	return nullptr;
+	return m_Instance;
 }
 
 int CClientController::InitController()
@@ -105,7 +106,7 @@ int CClientController::SendCommandPacket(int nCmd, bool bAutoClose, BYTE* pData,
 int CClientController::loadImage(CImage& image)
 {
 	CClientSocket* pClient = CClientSocket::getInstance();
-	return CEdoyunTool::nBytes2Image(image, pClient->getPacket().strData.c_str());
+	return CEdoyunTool::nBytes2Image(image, pClient->getPacket().strData);
 }
 
 int CClientController::DonwloadFile(CString strPath)
@@ -242,14 +243,14 @@ void CClientController::threadWatchScreen()
 			Sleep(DWORD(GetTickCount64() - ulTick));
 		}
 
-		if (!m_remoteDlg.bIsFull())
+		if (!m_watchDlg.bIsFull())
 		{
 			int nRetCmd = SendCommandPacket(6);
 			if (nRetCmd == 6)
 			{
 				if (loadImage(m_remoteDlg.getImage()) == 0)
 				{
-					m_remoteDlg.setImageStatus(true);
+					m_watchDlg.setImageStatus(true);
 				}
 			}
 			else

@@ -5,8 +5,6 @@
 #include "StatusDlg.h"
 #include "WatchDialog.h"
 
-#define WM_SEND_PACKET (WM_USER + 1) //1 ==> 定义发送数据包的消息
-
 #pragma once
 
 
@@ -34,26 +32,17 @@ private:
 	void DeleteTreeChildrenItem(HTREEITEM hTree);
 
 public:
-	bool bIsFull() const
-	{
-		return m_bIsFull;
-	}
 	CImage& getImage()
 	{
 		return m_image;
 	}
 
-	void setImageStatus(bool isFull = false)
-	{
-		m_bIsFull = isFull;
-	}
 
 // 实现
 protected:
 	HICON m_hIcon;
 	CStatusDlg m_dlgStatus;
 	CImage m_image;//图像缓存
-	bool m_bIsFull;//缓存是否有数据 true表示有 false表示没有
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
@@ -80,7 +69,6 @@ public:
 	afx_msg void OnDeleteFile();
 	afx_msg void OnRunFile();
 
-	afx_msg LRESULT OnSendPacket(WPARAM wParam, LPARAM lParam);//2 ==> 定义自定义消息响应函数
 	afx_msg void OnBnClickedBtnStartWatch();
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg void OnIpnFieldchangedIpaddressServ(NMHDR* pNMHDR, LRESULT* pResult);
