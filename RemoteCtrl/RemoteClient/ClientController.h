@@ -139,7 +139,9 @@ private:
 		// 这里主动调用 getInstance，让 Controller 管理对象提前创建。
 		CHelper()
 		{
-			CClientController::getInstance();
+			//m_helper是静态成员，构造会先于main函数构造，窗口类的构造函数会调用theApp的
+			// main构造，由于main函数还没有构造完，此时先构造窗口类就会产生错误
+			//CClientController::getInstance();
 		}
 
 		// 程序结束时，静态成员 m_helper 会析构。
