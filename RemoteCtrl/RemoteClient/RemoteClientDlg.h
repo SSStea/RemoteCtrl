@@ -32,17 +32,11 @@ private:
 	void DeleteTreeChildrenItem(HTREEITEM hTree);
 
 public:
-	CImage& getImage()
-	{
-		return m_image;
-	}
-
 
 // 实现
 protected:
 	HICON m_hIcon;
 	CStatusDlg m_dlgStatus;
-	CImage m_image;//图像缓存
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();

@@ -20,6 +20,12 @@ public:
 	int m_nObjWidth;
 	int m_nObjHeight;
 
+	CImage& getImage()
+	{
+		return m_image;
+	}
+
+
 	void setImageStatus(bool isFull = false)
 	{
 		m_bIsFull = isFull;
@@ -32,6 +38,7 @@ public:
 
 protected:
 	bool m_bIsFull;//缓存是否有数据 true表示有 false表示没有
+	CImage m_image;//图像缓存
 
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
 

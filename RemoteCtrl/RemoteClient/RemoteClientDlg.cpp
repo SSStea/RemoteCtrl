@@ -255,7 +255,7 @@ void CRemoteClientDlg::LoadFileCurrent()
 		pInfo = (pFILEINFO)CClientSocket::getInstance()->getPacket().strData.c_str();
 	}
 
-	pController->CloseSocket();
+	//pController->CloseSocket();
 }
 
 void CRemoteClientDlg::LoadFileInfo()
@@ -319,7 +319,7 @@ void CRemoteClientDlg::LoadFileInfo()
 		pInfo = (pFILEINFO)CClientSocket::getInstance()->getPacket().strData.c_str();
 	}
 
-	pController->CloseSocket();
+	//pController->CloseSocket();
 }
 
 CString CRemoteClientDlg::GetPath(HTREEITEM hTree)

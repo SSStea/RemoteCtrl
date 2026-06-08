@@ -29,7 +29,7 @@ public:
 			return -1;
 		}
 
-		std::list<CPacket> lstPacket;
+		std::list<CPacket> lstSendPacket;
 
 		m_callback = callback;
 		m_arg = arg;
@@ -60,11 +60,11 @@ public:
 			if (nRetCmd > 0)
 			{
 				//解析到的命令通过回调函数执行
-				m_callback(m_arg, nRetCmd, lstPacket, m_packet);
-				while (lstPacket.size() > 0)
+				m_callback(m_arg, nRetCmd, lstSendPacket, m_packet);
+				while (lstSendPacket.size() > 0)
 				{
-					bSend(lstPacket.front());
-					lstPacket.pop_front();
+					bSend(lstSendPacket.front());
+					lstSendPacket.pop_front();
 				}
 			}
 			CloseClient();
