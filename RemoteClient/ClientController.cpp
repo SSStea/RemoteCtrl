@@ -64,7 +64,8 @@ LRESULT CClientController::SendMessage(MSG msg)
 
 	PostThreadMessage(m_nThreadID, WM_SEND_MESSAGE, (WPARAM)&info, (LPARAM)hEvent);
 
-	WaitForSingleObject(hEvent, -1);
+	WaitForSingleObject(hEvent, INFINITE);
+	CloseHandle(hEvent);
 	return info.result;
 }
 
@@ -170,6 +171,8 @@ int CClientController::SendCommandPacket(
 
 	CClientSocket* pClient = CClientSocket::getInstance();
 	pClient->bSendPkt(reqPkt, *plstAckPkts);
+
+	CloseHandle(hEvent);//回收事件句柄，防止资源耗尽
 
 	if (plstAckPkts->size() > 0)
 	{
@@ -324,11 +327,13 @@ void CClientController::threadWatchScreen()
 			int nRetCmd = SendCommandPacket(6, NULL, 0, &lstAckPkts);
 			if (nRetCmd == 6)
 			{
-				int nLoadRet = CEdoyunTool::nBytes2Image(m_remoteDlg.getImage(),
+				int nLoadRet = CEdoyunTool::nBytes2Image(m_watchDlg.getImage(),
 					lstAckPkts.front().strData);
 				if (nLoadRet == 0)
 				{
 					m_watchDlg.setImageStatus(true);
+					TRACE("成功设置图片 %08X\r\n", (HBITMAP)m_watchDlg.getImage());
+					TRACE("sum %04X\r\n", lstAckPkts.front().sSum);
 				}
 			}
 			else

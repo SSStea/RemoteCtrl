@@ -283,31 +283,7 @@ public:
 	}
 
 
-	bool bSendPkt(const CPacket& reqPkt, std::list<CPacket>& out_lstAckPkts)
-	{
-		if (m_Sock == INVALID_SOCKET)
-		{
-			if (!bInitSocket())
-			{
-				return false;
-			}
-			_beginthread(&CClientSocket::threadPktHandleEntry, 0, this);
-		}
-
-		m_lstSendPkt.push_back(reqPkt);
-		WaitForSingleObject(reqPkt.hEvent, INFINITE);
-		auto it = m_mapAck.find(reqPkt.hEvent);
-		if (it != m_mapAck.end())
-		{ 
-			for (auto i = it->second.begin(); i != it->second.end(); i++)
-			{
-				out_lstAckPkts.push_back(*i);
-			}
-			m_mapAck.erase(it);
-			return true;
-		}
-		return false;
-	}
+	bool bSendPkt(const CPacket& reqPkt, std::list<CPacket>& out_lstAckPkts, bool bIsAutoClosed = true);
 
 	bool bGetFilePath(std::string& strPath)
 	{
@@ -357,10 +333,13 @@ private:
 	int										m_nPort;
 	std::map<HANDLE, std::list<CPacket>>	m_mapAck;//处理来自服务端的包的映射
 	std::list<CPacket>						m_lstSendPkt;//要发送的数据
+	bool									m_bAutoClosed;
+	std::map<HANDLE, bool>					m_mapAutoClsoed;
 
 	// 构造函数私有化，是单例模式的关键：
 	// 外部不能直接 new CServSocket，只能通过 getInstance 获取唯一对象。
-	CClientSocket() : m_nIP(INADDR_ANY), m_nPort(0), m_Sock(INVALID_SOCKET)
+	CClientSocket() : m_nIP(INADDR_ANY), m_nPort(0), m_Sock(INVALID_SOCKET), 
+		m_bAutoClosed(true)
 	{
 		// Windows 下使用 socket 前，必须先调用 WSAStartup 初始化 Winsock 环境。
 		if (!bInitSockEnv())
@@ -376,6 +355,7 @@ private:
 	// 拷贝构造和赋值运算符放在 private 中，目的是禁止外部复制单例对象。
 	CClientSocket(const CClientSocket& ss) 
 	{
+		m_bAutoClosed = ss.m_bAutoClosed;
 		m_Sock = ss.m_Sock;
 		m_nIP = ss.m_nIP;
 		m_nPort = ss.m_nPort;

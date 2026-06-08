@@ -70,23 +70,15 @@ void CWatchDialog::OnTimer(UINT_PTR nIDEvent)
 		CClientController* pController = CClientController::getInstance();
 		if (m_bIsFull)
 		{
+			m_nObjHeight = m_image.GetHeight();
+			m_nObjWidth = m_image.GetWidth();
+
 			CRect rect;//定义一个矩形对象，用来保存 m_picture 控件的位置和大小信息
-			
-			CImage image;
-			pController->loadImage(image);
-			if (m_nObjWidth == -1)
-			{
-				m_nObjWidth = image.GetWidth();
-			}
-			if (m_nObjHeight == -1)
-			{
-				m_nObjHeight = image.GetHeight();
-			}
 			// 获取 m_picture 控件在屏幕坐标中的矩形区域，这里主要使用它的宽度和高度
 			m_picture.GetWindowRect(rect);
 			CDC* pDC = m_picture.GetDC();
 
-			image.StretchBlt(//StretchBlt会把图片拉伸到指定的目标区域大小
+			m_image.StretchBlt(//StretchBlt会把图片拉伸到指定的目标区域大小
 				pDC->GetSafeHdc(), // 获取 m_picture 控件的 HDC，用于绘图
 				0,								// 目标区域左上角 x 坐标
 				0,								// 目标区域左上角 y 坐标
@@ -95,10 +87,13 @@ void CWatchDialog::OnTimer(UINT_PTR nIDEvent)
 				SRCCOPY							// 直接复制源图像到目标区域
 			);//将父窗口中保存的图片绘制到 m_picture 控件的设备上下文上
 			m_picture.InvalidateRect(NULL);// 通知系统 m_picture 控件需要重绘：NULL表示整个控件区域都需要刷新
-			image.Destroy();// 销毁父窗口中保存的图片资源，释放内存
+
+			TRACE("更新图片完成 %d %d %08X\r\n", m_nObjWidth, m_nObjHeight, (HBITMAP)m_image);
+			m_image.Destroy();// 销毁父窗口中保存的图片资源，释放内存
 			m_picture.ReleaseDC(pDC);//释放m_picture的DC，避免 GDI 资源泄漏
-			m_bIsFull = false;// 更新图片状态，例如标记当前图片已经处理完成
-			setImageStatus();
+			setImageStatus();// 更新图片状态，例如标记当前图片已经处理完成
+
+			
 		}
 	}
 	CDialog::OnTimer(nIDEvent);
