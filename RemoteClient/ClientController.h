@@ -41,10 +41,11 @@ public:
 	//5 操作鼠标 6 发送屏幕内容 7 锁住机器 8 解锁 9 删除文件
 	//返回值是命令号，如果小于0则错误
 	int SendCommandPacket(
-		int nCmd, 
-		BYTE* pData = NULL, 
-		size_t nLength = 0, 
-		std::list<CPacket>* plstAckPkts = NULL
+		int nCmd,
+		BYTE* pData = NULL,
+		size_t nLength = 0,
+		std::list<CPacket>* plstAckPkts = NULL,
+		bool bIsAutoClosed = true
 	);
 
 	//将数据装填进图像

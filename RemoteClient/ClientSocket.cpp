@@ -45,8 +45,9 @@ bool CClientSocket::bSendPkt(const CPacket& reqPkt, std::list<CPacket>& out_lstA
 	}
 
 	m_mapAck.insert(std::pair<HANDLE,
-		std::list<CPacket>>(reqPkt.hEvent, out_lstAckPkts));
+		std::list<CPacket>&>(reqPkt.hEvent, out_lstAckPkts));
 	m_mapAutoClsoed.insert(std::pair<HANDLE, bool>(reqPkt.hEvent, bIsAutoClosed));
+	TRACE("cmd %d event %08X thread id %d\r\n", reqPkt.sCmd, reqPkt.hEvent, GetCurrentThreadId());
 	m_lstSendPkt.push_back(reqPkt);
 
 	WaitForSingleObject(reqPkt.hEvent, INFINITE);
@@ -89,45 +90,53 @@ void CClientSocket::threadPktHandle()
 				continue;
 			}
 
-			auto ackPtks = m_mapAck.find(head.hEvent);
-			auto autoClose = m_mapAutoClsoed.find(head.hEvent);
-
-			do
+			auto itAckPtks = m_mapAck.find(head.hEvent);
+			auto itAutoClose = m_mapAutoClsoed.find(head.hEvent);
+			if (itAckPtks != m_mapAck.end() && itAutoClose != m_mapAutoClsoed.end())
 			{
-				int nRecvLen = recv(m_Sock, pBuffer + nIndex, BUFFER_SIZE - nIndex, 0);
-				if (nRecvLen > 0 || nIndex > 0)//表示读到或者缓冲区里有数据
+				do
 				{
-					//更新数据在buffer中的存储索引值index：将recv的数据长度len加到上一次的index
-					nIndex += nRecvLen;
-					//将buffer存储的数据长度改为当前buffer存储数据的索引位置
-					size_t nSize = (size_t)nIndex;
-					//按引用传入当前数据的长度len，将buffer解析，将数据封装为Packet并返回封装了的数据的长度len
-					CPacket pack((BYTE*)pBuffer, nSize);
-					if (nSize > 0)
+					int nRecvLen = recv(m_Sock, pBuffer + nIndex, BUFFER_SIZE - nIndex, 0);
+					if (nRecvLen > 0 || nIndex > 0)//表示读到或者缓冲区里有数据
 					{
-						//TODO:通知对应事件
-						pack.hEvent = head.hEvent;
-						ackPtks->second.push_back(pack);
-						//将解析到的数据从buffer中移走
-						memmove(pBuffer, pBuffer + nSize, nIndex - nSize);
-						//变更数据在buffer中的存储索引值index，减掉解析到的数据长度len
-						nIndex -= nSize;
-						if (autoClose->second)
+						//更新数据在buffer中的存储索引值index：将recv的数据长度len加到上一次的index
+						nIndex += nRecvLen;
+						//将buffer存储的数据长度改为当前buffer存储数据的索引位置
+						size_t nSize = (size_t)nIndex;
+						//按引用传入当前数据的长度len，将buffer解析，将数据封装为Packet并返回封装了的数据的长度len
+						CPacket pack((BYTE*)pBuffer, nSize);
+						if (nSize > 0)
 						{
-							SetEvent(head.hEvent);
+							//TODO:通知对应事件
+							pack.hEvent = head.hEvent;
+							itAckPtks->second.push_back(pack);
+							//将解析到的数据从buffer中移走
+							memmove(pBuffer, pBuffer + nSize, nIndex - nSize);
+							//变更数据在buffer中的存储索引值index，减掉解析到的数据长度len
+							nIndex -= nSize;
+							if (itAutoClose->second)
+							{
+								SetEvent(head.hEvent);
+								break;
+							}
 						}
 					}
-				}
-				else if (nRecvLen <= 0 && nIndex <= 0)
-				{
-					CloseSocket();
-					//等待服务器关闭之后再通知这个命令的接收包事件完成
-					SetEvent(head.hEvent);
-				}
-			} while (!autoClose->second);
+					else if (nRecvLen <= 0 && nIndex <= 0)
+					{
+						CloseSocket();
+						//等待服务器关闭之后再通知这个命令的接收包事件完成
+						SetEvent(head.hEvent);
+						break;
+					}
+				} while (!itAutoClose->second);
+			}
 
+			m_mapAutoClsoed.erase(itAutoClose);
 			m_lstSendPkt.pop_front();
-			bInitSocket();
+			if (!bInitSocket())
+			{
+				bInitSocket();
+			}
 		}
 	}
 	CloseSocket();
