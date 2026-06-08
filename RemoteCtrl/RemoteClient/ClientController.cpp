@@ -158,7 +158,8 @@ int CClientController::SendCommandPacket(
 	int nCmd,
 	BYTE* pData,
 	size_t nLength,
-	std::list<CPacket>* plstAckPkts
+	std::list<CPacket>* plstAckPkts,
+	bool bIsAutoClosed
 )
 {
 	HANDLE hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -170,7 +171,7 @@ int CClientController::SendCommandPacket(
 	}
 
 	CClientSocket* pClient = CClientSocket::getInstance();
-	pClient->bSendPkt(reqPkt, *plstAckPkts);
+	pClient->bSendPkt(reqPkt, *plstAckPkts, bIsAutoClosed);
 
 	CloseHandle(hEvent);//回收事件句柄，防止资源耗尽
 
@@ -324,7 +325,7 @@ void CClientController::threadWatchScreen()
 		if (!m_watchDlg.bIsFull())
 		{
 			std::list<CPacket> lstAckPkts;
-			int nRetCmd = SendCommandPacket(6, NULL, 0, &lstAckPkts);
+			int nRetCmd = SendCommandPacket(6, NULL, 0, &lstAckPkts, false);
 			if (nRetCmd == 6)
 			{
 				int nLoadRet = CEdoyunTool::nBytes2Image(m_watchDlg.getImage(),
