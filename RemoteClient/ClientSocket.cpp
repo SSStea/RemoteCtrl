@@ -35,27 +35,32 @@ std::string GetSockErrInfo(int wsaErrcode)
 bool CClientSocket::bSendPkt(const CPacket& reqPkt, std::list<CPacket>& out_lstAckPkts, 
 	bool bIsAutoClosed)
 {
-	if (m_Sock == INVALID_SOCKET)
+	if (m_Sock == INVALID_SOCKET && m_hPktThread == INVALID_HANDLE_VALUE)
 	{
 		/*if (!bInitSocket())
 		{
 			return false;
 		}*/
-		_beginthread(&CClientSocket::threadPktHandleEntry, 0, this);
+		m_hPktThread = (HANDLE)_beginthread(&CClientSocket::threadPktHandleEntry, 0, this);
 	}
 
+	m_lock.lock();
 	m_mapAck.insert(std::pair<HANDLE,
 		std::list<CPacket>&>(reqPkt.hEvent, out_lstAckPkts));
 	m_mapAutoClsoed.insert(std::pair<HANDLE, bool>(reqPkt.hEvent, bIsAutoClosed));
 	TRACE("cmd %d event %08X thread id %d\r\n", reqPkt.sCmd, reqPkt.hEvent, GetCurrentThreadId());
 	m_lstSendPkt.push_back(reqPkt);
+	m_lock.unlock();
 
 	WaitForSingleObject(reqPkt.hEvent, INFINITE);
 
 	auto it = m_mapAck.find(reqPkt.hEvent);
 	if (it != m_mapAck.end())
 	{
+		m_lock.lock();
 		m_mapAck.erase(it);
+		m_lock.unlock();
+
 		return true;
 	}
 	return false;
@@ -83,7 +88,11 @@ void CClientSocket::threadPktHandle()
 		if (m_lstSendPkt.size() > 0)
 		{
 			TRACE("lst Send Size = %d\r\n", m_lstSendPkt.size());
+
+			m_lock.lock();
 			CPacket& head = m_lstSendPkt.front();
+			m_lock.unlock();
+
 			if (!bSend(head))
 			{
 				TRACE("发送失败！！\r\n");
@@ -97,6 +106,7 @@ void CClientSocket::threadPktHandle()
 				do
 				{
 					int nRecvLen = recv(m_Sock, pBuffer + nIndex, BUFFER_SIZE - nIndex, 0);
+					TRACE("recv len = %d\r\n", nRecvLen);
 					if (nRecvLen > 0 || nIndex > 0)//表示读到或者缓冲区里有数据
 					{
 						//更新数据在buffer中的存储索引值index：将recv的数据长度len加到上一次的index
@@ -131,12 +141,22 @@ void CClientSocket::threadPktHandle()
 				} while (!itAutoClose->second);
 			}
 
+			m_lock.lock();
 			m_mapAutoClsoed.erase(itAutoClose);
+			m_lock.unlock();
+			
+			m_lock.lock();
 			m_lstSendPkt.pop_front();
+			m_lock.unlock();
+
 			if (!bInitSocket())
 			{
 				bInitSocket();
 			}
+		}
+		else
+		{
+			Sleep(1);
 		}
 	}
 	CloseSocket();

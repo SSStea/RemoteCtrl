@@ -5,6 +5,7 @@
 #include <vector>
 #include <list>
 #include <map>
+#include <mutex>
 
 #pragma pack(push)
 #pragma pack(1)
@@ -335,11 +336,13 @@ private:
 	std::list<CPacket>						m_lstSendPkt;//要发送的数据
 	bool									m_bAutoClosed;
 	std::map<HANDLE, bool>					m_mapAutoClsoed;
+	std::mutex								m_lock;
+	HANDLE									m_hPktThread;
 
 	// 构造函数私有化，是单例模式的关键：
 	// 外部不能直接 new CServSocket，只能通过 getInstance 获取唯一对象。
 	CClientSocket() : m_nIP(INADDR_ANY), m_nPort(0), m_Sock(INVALID_SOCKET), 
-		m_bAutoClosed(true)
+		m_bAutoClosed(true), m_hPktThread(INVALID_HANDLE_VALUE)
 	{
 		// Windows 下使用 socket 前，必须先调用 WSAStartup 初始化 Winsock 环境。
 		if (!bInitSockEnv())
