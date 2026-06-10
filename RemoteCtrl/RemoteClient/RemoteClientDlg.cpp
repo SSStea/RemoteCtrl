@@ -352,16 +352,16 @@ void CRemoteClientDlg::OnRunFile()
 	HTREEITEM hSelected = m_Tree.GetSelectedItem();
 	CString strFilePath = GetPath(hSelected) + strFileName;
 
-	int nRetCmd = CClientController::getInstance()->SendCommandPacket(
+	bool bRet = CClientController::getInstance()->SendCommandPacket(
 		GetSafeHwnd(),
 		3, 
 		(BYTE*)(LPCSTR)strFilePath, 
 		strFilePath.GetLength()
 	);
 
-	if (nRetCmd < 0)
+	if (!bRet)
 	{
-		AfxMessageBox("打开文件命令执行失败！！");
+		AfxMessageBox("打开文件命令发送失败！！");
 	}
 }
 
@@ -405,16 +405,18 @@ LRESULT CRemoteClientDlg::OnHandleAckPkt(WPARAM wParam, LPARAM lParam)
 	}
 	else
 	{
-		CPacket* pAckPkt = (CPacket*)wParam;
-		if (pAckPkt == NULL)
+		CPacket pAckPkt = *(CPacket*)wParam;
+		delete (CPacket*)wParam;
+
+		if (pAckPkt.Size() < 0)
 		{
 			return 0;
 		}
-		switch (pAckPkt->sCmd)
+		switch (pAckPkt.sCmd)
 		{
 		case 1:
 		{
-			std::string strDrivers = pAckPkt->strData;
+			std::string strDrivers = pAckPkt.strData;
 			std::string dr;
 			m_Tree.DeleteAllItems();
 
@@ -441,7 +443,7 @@ LRESULT CRemoteClientDlg::OnHandleAckPkt(WPARAM wParam, LPARAM lParam)
 			break;
 		case 2:
 		{
-			pFILEINFO pInfo = (pFILEINFO)pAckPkt->strData.c_str();
+			pFILEINFO pInfo = (pFILEINFO)pAckPkt.strData.c_str();
 			if (!pInfo->bHasNext)
 			{
 				break;
@@ -470,7 +472,7 @@ LRESULT CRemoteClientDlg::OnHandleAckPkt(WPARAM wParam, LPARAM lParam)
 				static long long  lFileLength = 0, lIndex = 0;
 				if (lFileLength == 0)
 				{
-					long long lFileLength = *(long long*)pAckPkt->strData.c_str();
+					long long lFileLength = *(long long*)pAckPkt.strData.c_str();
 					if (lFileLength == 0)
 					{
 						AfxMessageBox("文件长度为零，或着无法读取文件！！");
@@ -488,8 +490,8 @@ LRESULT CRemoteClientDlg::OnHandleAckPkt(WPARAM wParam, LPARAM lParam)
 				else
 				{
 					FILE* pFile = (FILE*)lParam;
-					fwrite(pAckPkt->strData.c_str(), 1, pAckPkt->strData.size(), pFile);
-					lIndex += pAckPkt->strData.size();
+					fwrite(pAckPkt.strData.c_str(), 1, pAckPkt.strData.size(), pFile);
+					lIndex += pAckPkt.strData.size();
 				}
 			}
 			break;
@@ -517,7 +519,7 @@ LRESULT CRemoteClientDlg::OnHandleAckPkt(WPARAM wParam, LPARAM lParam)
 			TRACE("test connection success!!\r\n");
 			break;
 		default:
-			TRACE("UNKOWN DATA RECEIVED!!! %d\r\n", pAckPkt->sCmd);
+			TRACE("UNKOWN DATA RECEIVED!!! %d\r\n", pAckPkt.sCmd);
 			break;
 		}
 
