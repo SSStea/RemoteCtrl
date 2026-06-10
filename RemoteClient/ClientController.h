@@ -29,9 +29,6 @@ public:
 	//更新网络服务器的地址、端口
 	void UpdataAddress(int nIP, int nPort);
 
-	//处理命令
-	int dealCommand();
-
 	//关闭套接字
 	void CloseSocket();
 
@@ -48,9 +45,6 @@ public:
 		LPARAM wParam = 0
 	);
 
-	//将数据装填进图像
-	int loadImage(CImage& image);
-
 	int DonwloadFile(CString strPath);
 	void DonwloadFileEnd();
 
@@ -59,10 +53,7 @@ public:
 protected:
 	CClientController():m_statusDlg(&m_remoteDlg), m_watchDlg(&m_remoteDlg)
 	{
-		m_hThreadDownload	= INVALID_HANDLE_VALUE;
-		m_hThreadWatch		= INVALID_HANDLE_VALUE;
 		m_hThread			= INVALID_HANDLE_VALUE;
-		m_bIsClosed			= true;
 		m_nThreadID			= -1;
 	}
 
@@ -73,12 +64,6 @@ protected:
 
 	static unsigned __stdcall threadMsgHandleEntry(void* arg);
 	void threadMsgHandle();
-
-	static void threadDownloadFileEntry(void* arg);
-	void threadDownloadFile();
-
-	static void threadWatchScreenEntry(void* arg);
-	void threadWatchScreen();
 
 	static void releaseInstance()
 	{
@@ -130,12 +115,9 @@ private:
 	HANDLE				m_hThread;
 	unsigned			m_nThreadID;
 
-	HANDLE				m_hThreadDownload;
 	CString				m_strRemoteFilePath;
 	CString				m_strLocalFilePath;
 
-	HANDLE				m_hThreadWatch;
-	bool				m_bIsClosed;//监视是否关闭
 
 	//控制单例
 	static CClientController* m_Instance;

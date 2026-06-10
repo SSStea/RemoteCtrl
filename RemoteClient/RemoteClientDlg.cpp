@@ -204,43 +204,6 @@ void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 	}
 }
 
-
-void CRemoteClientDlg::LoadFileCurrent()
-{
-	HTREEITEM hTree = m_Tree.GetSelectedItem();
-	CString strPath = GetPath(hTree);
-
-	m_List.DeleteAllItems();
-
-	CClientController* pController = CClientController::getInstance();
-	int nCmd = pController->SendCommandPacket(
-		GetSafeHwnd(),
-		2,  
-		(BYTE*)(LPCSTR)strPath, 
-		strPath.GetLength()
-	);
-
-	pFILEINFO pInfo = (pFILEINFO)CClientSocket::getInstance()->getPacket().strData.c_str();
-	
-	while (pInfo->bHasNext)//向服务端请求目录时可能是对某个空目录请求，这样就不必处理了
-	{
-		TRACE("[%s] is dir %d\r\n", pInfo->szFileName, pInfo->bIsDirectory);
-		if (!pInfo->bIsDirectory)
-		{
-			m_List.InsertItem(0, pInfo->szFileName);
-		}
-		int nRetCmd = pController->dealCommand();
-		TRACE("ack: %d\r\n", nRetCmd);
-		if (nRetCmd < 0)
-		{
-			break;
-		}
-		pInfo = (pFILEINFO)CClientSocket::getInstance()->getPacket().strData.c_str();
-	}
-
-	//pController->CloseSocket();
-}
-
 void CRemoteClientDlg::LoadFileInfo()
 {
 	CPoint ptMouse;
