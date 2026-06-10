@@ -370,16 +370,14 @@ void CRemoteClientDlg::OnDeleteFile()
 		GetSafeHwnd(),
 		9, 
 		(BYTE*)(LPCSTR)strFilePath, 
-		strFilePath.GetLength()
+		strFilePath.GetLength(),
+		true,
+		(LPARAM)hSelected
 	);
 	
 	if (!bRet)
 	{
-		AfxMessageBox("删除文件命令执行失败！！");
-	}
-	else
-	{
-		LoadFileCurrent();
+		AfxMessageBox("删除文件命令发送失败！！");
 	}
 }
 
@@ -505,33 +503,51 @@ LRESULT CRemoteClientDlg::OnHandleAckPkt(WPARAM wParam, LPARAM lParam)
 			TRACE("run file done!!\r\n");
 			break;
 		case 4:
-		{
-			static long long  lFileLength = 0, lIndex = 0;
-			if (lFileLength == 0)
 			{
-				long long lFileLength = *(long long*)pAckPkt->strData.c_str();
+				static long long  lFileLength = 0, lIndex = 0;
 				if (lFileLength == 0)
 				{
-					AfxMessageBox("文件长度为零，或着无法读取文件！！");
+					long long lFileLength = *(long long*)pAckPkt->strData.c_str();
+					if (lFileLength == 0)
+					{
+						AfxMessageBox("文件长度为零，或着无法读取文件！！");
+						CClientController::getInstance()->DonwloadFileEnd();
+						break;
+					}
+				}
+				else if (lFileLength > 0 && lIndex >= lFileLength)
+				{
+					fclose((FILE*)lParam);
+					lFileLength = 0;
+					lIndex = 0;
 					CClientController::getInstance()->DonwloadFileEnd();
-					break;
+				}
+				else
+				{
+					FILE* pFile = (FILE*)lParam;
+					fwrite(pAckPkt->strData.c_str(), 1, pAckPkt->strData.size(), pFile);
+					lIndex += pAckPkt->strData.size();
 				}
 			}
-			else if (lFileLength > 0 && lIndex >= lFileLength)
-			{
-				fclose((FILE*)lParam);
-				lFileLength = 0;
-				lIndex = 0;
-				CClientController::getInstance()->DonwloadFileEnd();
-			}
-			else
-			{
-				FILE* pFile = (FILE*)lParam;
-				fwrite(pAckPkt->strData.c_str(), 1, pAckPkt->strData.size(), pFile);
-				lIndex += pAckPkt->strData.size();
-			}
-		}
+			break;
 		case 9:
+			{
+				HTREEITEM hSelected = (HTREEITEM)lParam;
+
+				CString strPath = GetPath(hSelected);
+
+				DeleteTreeChildrenItem(hSelected);
+				m_List.DeleteAllItems();
+
+				CClientController::getInstance()->SendCommandPacket(
+					GetSafeHwnd(),
+					2,
+					(BYTE*)(LPCSTR)strPath,
+					strPath.GetLength(),
+					false,
+					(LPARAM)hSelected
+				);
+			}
 			TRACE("delete file done!!!\r\n");
 			break;
 		case 1981:

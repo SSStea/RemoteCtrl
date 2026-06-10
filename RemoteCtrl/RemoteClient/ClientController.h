@@ -45,7 +45,7 @@ public:
 		BYTE* pData = NULL,
 		size_t nLength = 0,
 		bool bIsAutoClosed = true,
-		WPARAM wParam = 0
+		LPARAM wParam = 0
 	);
 
 	//将数据装填进图像

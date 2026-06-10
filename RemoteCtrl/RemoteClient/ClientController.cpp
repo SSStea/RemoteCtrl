@@ -160,13 +160,13 @@ bool CClientController::SendCommandPacket(
 	BYTE* pData,
 	size_t nLength,
 	bool bIsAutoClosed,
-	WPARAM wParam
+	LPARAM lParam
 )
 {
 	CPacket reqPkt(nCmd, pData, nLength);//请求包
 	CClientSocket* pClient = CClientSocket::getInstance();
 	
-	return pClient->bSendPkt(hWnd, reqPkt, bIsAutoClosed);
+	return pClient->bSendPkt(hWnd, reqPkt, bIsAutoClosed, lParam);
 }
 
 int CClientController::loadImage(CImage& image)
