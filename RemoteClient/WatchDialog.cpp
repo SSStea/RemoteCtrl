@@ -104,8 +104,14 @@ CPoint CWatchDialog::UserPoint2RemoteScreenPoint(CPoint& point, bool bIsScreen)
 	CRect clientRect;
 	if(bIsScreen)//如果是屏幕坐标，OnLButtonDblClk等函数获取的是客户端坐标而不是屏幕坐标
 	{
-		ScreenToClient(&point);//将屏幕坐标point转化为客户端坐标
+		m_picture.ScreenToClient(&point);//将屏幕坐标point转化为客户端坐标
 	}
+	else
+	{
+		ClientToScreen(&point);//先将客户端左边转为全局屏幕坐标
+		m_picture.ScreenToClient(&point);//再将全局的屏幕坐标转为图像缓存的客户端坐标
+	}
+
 	m_picture.GetWindowRect(&clientRect);//获取客户端的Rect：800*450
 	int width0 = clientRect.Width();
 	int height0 = clientRect.Height();
