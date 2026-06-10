@@ -18,7 +18,6 @@ CWatchDialog::CWatchDialog(CWnd* pParent /*=nullptr*/)
 {
 	m_nObjWidth = -1;
 	m_nObjHeight = -1;
-	m_bIsFull = false;
 }
 
 CWatchDialog::~CWatchDialog()
@@ -57,8 +56,6 @@ BOOL CWatchDialog::OnInitDialog()
 
 	// TODO:  在此添加额外的初始化
 	//SetTimer(0, 50, NULL);
-
-	m_bIsFull = false;
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// 异常: OCX 属性页应返回 FALSE
@@ -350,18 +347,23 @@ LRESULT CWatchDialog::OnHandleAckPkt(WPARAM wParam, LPARAM lParam)
 		{
 		case 6:
 			{
-				if (m_bIsFull)
+				HRESULT hRet = CEdoyunTool::nBytes2Image(m_image, pAckPkt->strData);
+				if(hRet != S_OK)
 				{
-					CEdoyunTool::nBytes2Image(m_image, pAckPkt->strData);
+					TRACE("图像设置失败！！ %d", hRet);
+					break;
+				}
 
-					m_nObjHeight = m_image.GetHeight();
-					m_nObjWidth = m_image.GetWidth();
+				m_nObjHeight = m_image.GetHeight();
+				m_nObjWidth = m_image.GetWidth();
 
-					CRect rect;//定义一个矩形对象，用来保存 m_picture 控件的位置和大小信息
-					// 获取 m_picture 控件在屏幕坐标中的矩形区域，这里主要使用它的宽度和高度
-					m_picture.GetWindowRect(rect);
-					CDC* pDC = m_picture.GetDC();
+				CRect rect;//定义一个矩形对象，用来保存 m_picture 控件的位置和大小信息
+				// 获取 m_picture 控件在屏幕坐标中的矩形区域，这里主要使用它的宽度和高度
+				m_picture.GetWindowRect(rect);
 
+				CDC* pDC = m_picture.GetDC();
+				if(pDC != NULL)
+				{
 					m_image.StretchBlt(//StretchBlt会把图片拉伸到指定的目标区域大小
 						pDC->GetSafeHdc(), // 获取 m_picture 控件的 HDC，用于绘图
 						0,								// 目标区域左上角 x 坐标
@@ -370,13 +372,16 @@ LRESULT CWatchDialog::OnHandleAckPkt(WPARAM wParam, LPARAM lParam)
 						rect.Height(),					// 目标绘制高度，等于控件高度
 						SRCCOPY							// 直接复制源图像到目标区域
 					);//将父窗口中保存的图片绘制到 m_picture 控件的设备上下文上
-					m_picture.InvalidateRect(NULL);// 通知系统 m_picture 控件需要重绘：NULL表示整个控件区域都需要刷新
 
-					TRACE("更新图片完成 %d %d %08X\r\n", m_nObjWidth, m_nObjHeight, (HBITMAP)m_image);
-					m_image.Destroy();// 销毁父窗口中保存的图片资源，释放内存
 					m_picture.ReleaseDC(pDC);//释放m_picture的DC，避免 GDI 资源泄漏
-					setImageStatus();// 更新图片状态，例如标记当前图片已经处理完成
 				}
+				m_picture.InvalidateRect(NULL);// 通知系统 m_picture 控件需要重绘：NULL表示整个控件区域都需要刷新
+
+				TRACE("更新图片完成 %d %d %08X\r\n", m_nObjWidth, m_nObjHeight, (HBITMAP)m_image);
+				m_image.Destroy();// 销毁父窗口中保存的图片资源，释放内存
+				
+				Sleep(100);
+				CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(), 6, NULL, 0, false);
 			}
 			break;
 		case 5:

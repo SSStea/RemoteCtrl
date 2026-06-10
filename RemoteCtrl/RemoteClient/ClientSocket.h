@@ -224,6 +224,7 @@ enum {
 
 std::string GetSockErrInfo(int wsaErrcode);
 
+#define BUFFER_SIZE 20480000
 class CClientSocket
 {
 public:
@@ -281,45 +282,6 @@ public:
 		return true;
 	}
 
-#define BUFFER_SIZE 20480000
-	// 处理客户端发来的命令。
-	int dealCommand()
-	{
-		if (m_Sock == -1)
-		{
-			return -1;
-		}
-
-		char* buffer = m_vecBuffer.data();
-		static size_t index = 0;
-		//定义为静态全局变量：服务端可能一次性发来多个包的数据，底下的处理逻辑是每解析一个包就返回，
-		//	并将处理完的数据从buffer中移除、修改index的索引值，因此index不能在每次处理命令时都为0，
-		//	这样会导致每次存储数据都从0开始存储，从而覆盖之前服务端发来的但没有处理完的数据
-		//指向当前buffer存储的数据的位置，值表示当前存储的总长度
-		while (true)
-		{
-			size_t len = recv(m_Sock, buffer + index, BUFFER_SIZE - (int)index, 0);
-			if ((int)len <= 0 && (int)index <= 0)//表示没读到并且缓冲区里没数据
-			{
-				return -1;
-			}
-			TRACE("recv len = %d(0x%08X) index = %d(0x%08X)\r\n", len, len, index, index);
-			index += len;//更新数据在buffer中的存储索引值index：将recv的数据长度len加到上一次的index
-			len = index;//将buffer存储的数据长度改为当前buffer存储数据的索引位置
-			TRACE("recv len = %d(0x%08X) index = %d(0x%08X)\r\n", len, len, index, index);
-			m_packet = CPacket((BYTE*)buffer, len);
-			TRACE("cmd = %d\r\n", m_packet.sCmd);
-			//按引用传入当前数据的长度len，将buffer解析，将数据封装为Packet并返回封装了的数据的长度len
-			if (len > 0)//如果解析到了数据
-			{
-				memmove(buffer, buffer + len, index - len);//将解析到的数据从buffer中移走
-				index -= len;//变更数据在buffer中的存储索引值index，减掉解析到的数据长度len
-				return m_packet.sCmd;
-			}
-		}
-		return -1;
-	}
-
 	bool bSendPkt(HWND hWnd, const CPacket& reqPkt, bool bIsAutoClosed = true, LPARAM lParam = 0);
 
 	bool bGetFilePath(std::string& strPath)
@@ -340,11 +302,6 @@ public:
 			return true;
 		}
 		return false;
-	}
-
-	CPacket& getPacket()
-	{
-		return m_packet;
 	}
 
 	void CloseSocket()

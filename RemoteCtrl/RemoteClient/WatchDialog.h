@@ -29,18 +29,7 @@ public:
 	}
 
 
-	void setImageStatus(bool isFull = false)
-	{
-		m_bIsFull = isFull;
-	}
-
-	bool bIsFull() const
-	{
-		return m_bIsFull;
-	}
-
 protected:
-	bool m_bIsFull;//缓存是否有数据 true表示有 false表示没有
 	CImage m_image;//图像缓存
 
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
