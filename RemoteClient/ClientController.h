@@ -44,13 +44,15 @@ public:
 		int nCmd,
 		BYTE* pData = NULL,
 		size_t nLength = 0,
-		bool bIsAutoClosed = true
+		bool bIsAutoClosed = true,
+		WPARAM wParam = 0
 	);
 
 	//将数据装填进图像
 	int loadImage(CImage& image);
 
 	int DonwloadFile(CString strPath);
+	void DonwloadFileEnd();
 
 	void StartWatchScreen();
 

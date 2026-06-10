@@ -159,7 +159,8 @@ bool CClientController::SendCommandPacket(
 	int nCmd,
 	BYTE* pData,
 	size_t nLength,
-	bool bIsAutoClosed
+	bool bIsAutoClosed,
+	WPARAM wParam
 )
 {
 	CPacket reqPkt(nCmd, pData, nLength);//请求包
@@ -189,12 +190,28 @@ int CClientController::DonwloadFile(CString strPath)
 		m_strRemoteFilePath = strPath;
 		m_strLocalFilePath = cFileDlg.GetPathName();
 
-		m_hThreadDownload = (HANDLE)_beginthread(&CClientController::threadDownloadFileEntry, 0, this);
+		FILE* pFile = fopen(m_strLocalFilePath, "wb+");
+		if (pFile == NULL)
+		{
+			AfxMessageBox("本地无权限保存该文件，或文件无法创建");
+			return -1;
+		}
+
+		int nRetCmd = SendCommandPacket(
+			m_remoteDlg,
+			4,
+			(BYTE*)(LPCSTR)m_strRemoteFilePath,
+			m_strRemoteFilePath.GetLength(),
+			false,
+			(LPARAM)pFile
+		);
+
+		/*m_hThreadDownload = (HANDLE)_beginthread(&CClientController::threadDownloadFileEntry, 0, this);
 
 		if (WaitForSingleObject(m_hThreadDownload, 0) != WAIT_TIMEOUT)
 		{
 			return -1;
-		}
+		}*/
 
 		m_remoteDlg.BeginWaitCursor();
 		m_statusDlg.m_info.SetWindowText(_T("命令正在执行中！！"));
@@ -204,6 +221,13 @@ int CClientController::DonwloadFile(CString strPath)
 	}
 
 	return 0;
+}
+
+void CClientController::DonwloadFileEnd()
+{
+	m_statusDlg.ShowWindow(SW_HIDE);
+	m_remoteDlg.EndWaitCursor();
+	m_remoteDlg.MessageBox(_T("下载完成！！"), _T("完成"));
 }
 
 void CClientController::threadDownloadFileEntry(void* arg)
@@ -234,7 +258,9 @@ void CClientController::threadDownloadFile()
 			m_remoteDlg,
 			4,
 			(BYTE*)(LPCSTR)m_strRemoteFilePath,
-			m_strRemoteFilePath.GetLength()
+			m_strRemoteFilePath.GetLength(),
+			false,
+			(WPARAM)pFile
 		);
 
 		if (nRetCmd < 0)
