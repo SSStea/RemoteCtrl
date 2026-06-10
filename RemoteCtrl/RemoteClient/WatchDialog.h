@@ -1,6 +1,9 @@
 ﻿#pragma once
 #include "afxdialogex.h"
 
+#ifndef WM_SEND_ACK
+#define WM_SEND_ACK		(WM_USER+2)//发送应答包
+#endif
 
 // CWatchDialog 对话框
 
@@ -60,4 +63,5 @@ public:
 	virtual void OnOK();
 	afx_msg void OnBnClickedBtnLock();
 	afx_msg void OnBnClickedBtnUnlock();
+	afx_msg LRESULT OnHandleAckPkt(WPARAM wParam, LPARAM lParam);
 };

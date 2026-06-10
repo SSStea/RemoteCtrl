@@ -32,7 +32,7 @@ std::string GetSockErrInfo(int wsaErrcode)
 	return ret;
 }
 
-bool CClientSocket::bSendPkt(HWND hWnd, const CPacket& reqPkt, bool bIsAutoClosed)
+bool CClientSocket::bSendPkt(HWND hWnd, const CPacket& reqPkt, bool bIsAutoClosed, LPARAM lParam)
 {
 	if (m_hPktThread == INVALID_HANDLE_VALUE)
 	{
@@ -46,12 +46,12 @@ bool CClientSocket::bSendPkt(HWND hWnd, const CPacket& reqPkt, bool bIsAutoClose
 		);
 	}
 	UINT nMode = bIsAutoClosed ? CSM_AUTOCLOSE : 0;
-	std::string strOut;
-	reqPkt.Data(strOut);
+	std::string strReqOut;
+	reqPkt.Data(strReqOut);
 	bool bRet = PostThreadMessage(
 		m_hPktThreadID, 
 		WM_SEND_PACK, 
-		(WPARAM)new PACKETDATA(strOut.c_str(),strOut.size(),nMode), 
+		(WPARAM)new PACKETDATA(strReqOut.c_str(), strReqOut.size(), nMode, lParam),
 		(LPARAM)hWnd
 	);
 
@@ -86,23 +86,23 @@ void CClientSocket::threadPktHandle2()
 
 void CClientSocket::sendPack(UINT nMsg, WPARAM wParam, LPARAM lParam)
 {
-	PACKETDATA pktData = *(PACKETDATA*)wParam;
+	PACKETDATA reqPktData = *(PACKETDATA*)wParam;
 	delete (PACKETDATA*)wParam;
 
 	HWND hWnd = (HWND)lParam;
 
 	if (bInitSocket())
 	{
-		int ret = send(m_Sock, (char*)pktData.strData.c_str(), (int)pktData.strData.size(), 0);
+		int ret = send(m_Sock, (char*)reqPktData.strData.c_str(), (int)reqPktData.strData.size(), 0);
 		if (ret > 0)
 		{
 			int nIndex = 0; 
 			std::string strBuffer;
 			strBuffer.resize(BUFFER_SIZE);
-			char* pBuffer = (char*)strBuffer.c_str();
+			char* pAckBuffer = (char*)strBuffer.c_str();
 			while (m_Sock != INVALID_SOCKET)
 			{
-				int nRecvLen = recv(m_Sock, pBuffer + nIndex, BUFFER_SIZE - nIndex, 0);
+				int nRecvLen = recv(m_Sock, pAckBuffer + nIndex, BUFFER_SIZE - nIndex, 0);
 				if (nRecvLen > 0 || nIndex > 0)
 				{
 					//更新数据在buffer中的存储索引值index：将recv的数据长度len加到上一次的index
@@ -110,16 +110,16 @@ void CClientSocket::sendPack(UINT nMsg, WPARAM wParam, LPARAM lParam)
 					//将buffer存储的数据长度改为当前buffer存储数据的索引位置
 					size_t nSize = (size_t)nIndex;
 					//按引用传入当前数据的长度len，将buffer解析，将数据封装为Packet并返回封装了的数据的长度len
-					CPacket pack((BYTE*)pBuffer, nSize);
+					CPacket ackPkt((BYTE*)pAckBuffer, nSize);
 					if (nSize > 0)
 					{
-						::SendMessage(hWnd, WM_SEND_ACK, (WPARAM)new CPacket(pack), 0);
+						::SendMessage(hWnd, WM_SEND_ACK, (WPARAM)new CPacket(ackPkt), reqPktData.lParam);
 						//将解析到的数据从buffer中移走
-						memmove(pBuffer, pBuffer + nSize, nIndex - nSize);
+						memmove(pAckBuffer, pAckBuffer + nSize, nIndex - nSize);
 						//变更数据在buffer中的存储索引值index，减掉解析到的数据长度len
 						nIndex -= (int)nSize;
 
-						if(pktData.nMode & CSM_AUTOCLOSE)
+						if(reqPktData.nMode & CSM_AUTOCLOSE)
 						{
 							CloseSocket();
 							return;

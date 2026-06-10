@@ -7,6 +7,9 @@
 
 #pragma once
 
+#ifndef WM_SEND_ACK
+#define WM_SEND_ACK		(WM_USER+2)//发送应答包
+#endif
 
 // CRemoteClientDlg 对话框
 class CRemoteClientDlg : public CDialogEx
@@ -67,4 +70,5 @@ public:
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg void OnIpnFieldchangedIpaddressServ(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnEnChangeEditPort();
+	afx_msg LRESULT OnHandleAckPkt(WPARAM wParam, LPARAM lParam);
 };
