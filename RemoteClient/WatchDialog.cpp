@@ -338,16 +338,22 @@ LRESULT CWatchDialog::OnHandleAckPkt(WPARAM wParam, LPARAM lParam)
 	}
 	else
 	{
-		CPacket* pAckPkt = (CPacket*)wParam;
-		if (pAckPkt == NULL)
+		if (wParam == NULL)
 		{
 			return 0;
 		}
-		switch (pAckPkt->sCmd)
+		CPacket pAckPkt = *(CPacket*)wParam;
+		delete (CPacket*)wParam;
+
+		if (pAckPkt.Size() < 0)
+		{
+			return 0;
+		}
+		switch (pAckPkt.sCmd)
 		{
 		case 6:
 			{
-				HRESULT hRet = CEdoyunTool::nBytes2Image(m_image, pAckPkt->strData);
+				HRESULT hRet = CEdoyunTool::nBytes2Image(m_image, pAckPkt.strData);
 				if(hRet != S_OK)
 				{
 					TRACE("图像设置失败！！ %d", hRet);

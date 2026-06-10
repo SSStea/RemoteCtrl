@@ -48,12 +48,17 @@ bool CClientSocket::bSendPkt(HWND hWnd, const CPacket& reqPkt, bool bIsAutoClose
 	UINT nMode = bIsAutoClosed ? CSM_AUTOCLOSE : 0;
 	std::string strReqOut;
 	reqPkt.Data(strReqOut);
+	PACKETDATA* pPktData = new PACKETDATA(strReqOut.c_str(), strReqOut.size(), nMode, lParam);
 	bool bRet = PostThreadMessage(
 		m_hPktThreadID, 
 		WM_SEND_PACK, 
-		(WPARAM)new PACKETDATA(strReqOut.c_str(), strReqOut.size(), nMode, lParam),
+		(WPARAM)pPktData,
 		(LPARAM)hWnd
 	);
+	if (!bRet)
+	{
+		delete pPktData;
+	}
 
 	return bRet;
 }

@@ -320,18 +320,14 @@ public:
 	}
 
 private:
-	SOCKET									m_Sock;
-	CPacket									m_packet;
-	std::vector<char>						m_vecBuffer;
-	int										m_nIP;
-	int										m_nPort;
-	std::map<HANDLE, std::list<CPacket>&>	m_mapAck;//处理来自服务端的包的映射
-	std::list<CPacket>						m_lstSendPkt;//要发送的数据
-	bool									m_bAutoClosed;
-	std::map<HANDLE, bool>					m_mapAutoClsoed;
-	std::mutex								m_lock;
-	HANDLE									m_hPktThread;
-	UINT									m_hPktThreadID;
+	SOCKET					m_Sock;
+	CPacket					m_packet;
+	std::vector<char>		m_vecBuffer;
+	int						m_nIP;
+	int						m_nPort;
+	bool					m_bAutoClosed;
+	HANDLE					m_hPktThread;
+	UINT					m_hPktThreadID;
 
 	typedef void(CClientSocket::* PKTFUNC)(UINT, WPARAM, LPARAM);
 	std::map<UINT, PKTFUNC> m_mapPktFunc;
