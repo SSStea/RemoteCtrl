@@ -7,6 +7,9 @@
 #include <map>
 #include <mutex>
 
+#define WM_SEND_PACK	(WM_USER+1)//发送包数据
+#define WM_SEND_ACK		(WM_USER+2)//发送应答包
+
 #pragma pack(push)
 #pragma pack(1)
 class CPacket
@@ -21,7 +24,6 @@ public:
 		sCmd = packet.sCmd;
 		strData = packet.strData;
 		sSum = packet.sSum;
-		hEvent = packet.hEvent;
 	}
 
 	CPacket& operator=(const CPacket& packet)
@@ -35,11 +37,10 @@ public:
 		sCmd = packet.sCmd;
 		strData = packet.strData;
 		sSum = packet.sSum;
-		hEvent = packet.hEvent;
 	}
 
 	//解析包的构造函数
-	CPacket(const BYTE* pData, size_t& nSize):hEvent(INVALID_HANDLE_VALUE)
+	CPacket(const BYTE* pData, size_t& nSize)
 	{
 		size_t pos = 0;//代表目前数据解析到哪个位置
 		for (; pos < nSize; pos++)
@@ -90,7 +91,7 @@ public:
 	}
 
 	//构造包的构造函数
-	CPacket(WORD nCmd, const BYTE* pData, size_t nSize, HANDLE hEvent)
+	CPacket(WORD nCmd, const BYTE* pData, size_t nSize)
 	{
 		sHead = 0xFEFF;
 		nLength = (DWORD)nSize + 4;//数据长度+命令长度+校验长度
@@ -112,7 +113,6 @@ public:
 			sSum += BYTE(strData[j]) & 0xFF;
 		}
 
-		this->hEvent = hEvent;
 	}
 
 	//获取包的大小
@@ -152,7 +152,6 @@ public:
 	WORD		sCmd;		//控制命令
 	std::string strData;	//包数据
 	WORD		sSum;		//校验
-	HANDLE		hEvent;
 };
 #pragma pack(pop)
 
@@ -184,6 +183,40 @@ typedef struct file_info
 	BOOL bHasNext;              //是否还有下一个文件：0无 1有
 	char szFileName[256];       //文件名
 }FILEINFO, * pFILEINFO;
+
+typedef struct PacketData
+{
+	std::string strData;
+	UINT		nMode;
+	PacketData(const char* pData, size_t nLen, UINT mode)
+	{
+		strData.resize(nLen);
+		memcpy((char*)strData.c_str(), pData, nLen);
+		nMode = mode;
+	}
+
+	PacketData(const PacketData& data)
+	{
+		strData = data.strData;
+		nMode = data.nMode;
+	}
+
+	PacketData& operator=(const PacketData& data)
+	{
+		if (this != &data)
+		{
+			strData = data.strData;
+			nMode = data.nMode;
+		}
+
+		return *this;
+	}
+}PACKETDATA;
+
+enum {
+	CSM_AUTOCLOSE = 1 // CSM = Client Socket Mode 自动关闭模式
+
+};
 
 std::string GetSockErrInfo(int wsaErrcode);
 
@@ -283,8 +316,7 @@ public:
 		return -1;
 	}
 
-
-	bool bSendPkt(const CPacket& reqPkt, std::list<CPacket>& out_lstAckPkts, bool bIsAutoClosed = true);
+	bool bSendPkt(HWND hWnd, const CPacket& reqPkt, bool bIsAutoClosed = true);
 
 	bool bGetFilePath(std::string& strPath)
 	{
@@ -338,6 +370,10 @@ private:
 	std::map<HANDLE, bool>					m_mapAutoClsoed;
 	std::mutex								m_lock;
 	HANDLE									m_hPktThread;
+	UINT									m_hPktThreadID;
+
+	typedef void(CClientSocket::* PKTFUNC)(UINT, WPARAM, LPARAM);
+	std::map<UINT, PKTFUNC> m_mapPktFunc;
 
 	// 构造函数私有化，是单例模式的关键：
 	// 外部不能直接 new CServSocket，只能通过 getInstance 获取唯一对象。
@@ -353,6 +389,23 @@ private:
 		m_vecBuffer.resize(BUFFER_SIZE);
 		memset(m_vecBuffer.data(), 0, BUFFER_SIZE);
 
+		struct 
+		{
+			UINT message;
+			PKTFUNC func;
+		}funcs[] = {
+			{WM_SEND_PACK, &CClientSocket::sendPack},
+			{0, NULL}
+		};
+		for (int i = 0; funcs[i].message != 0; i++)
+		{
+			if (!m_mapPktFunc.insert(
+				std::pair<UINT, PKTFUNC>(funcs[i].message, funcs[i].func)).second)
+			{
+				TRACE("插入失败！消息值: %d 函数值: %08X 序号: %d\r\n", funcs[i].message, funcs[i].func, i);
+			}
+		}
+		m_mapPktFunc;
 	}
 
 	// 拷贝构造和赋值运算符放在 private 中，目的是禁止外部复制单例对象。
@@ -362,6 +415,11 @@ private:
 		m_Sock = ss.m_Sock;
 		m_nIP = ss.m_nIP;
 		m_nPort = ss.m_nPort;
+		for (auto it = ss.m_mapPktFunc.begin(); it != ss.m_mapPktFunc.end(); it++)
+		{
+			m_mapPktFunc.insert(std::pair<UINT, PKTFUNC>(it->first, it->second));
+		}
+
 	}
 	CClientSocket& operator=(const CClientSocket& ss){}
 
@@ -372,8 +430,8 @@ private:
 		WSACleanup();
 	}
 
-	static void threadPktHandleEntry(void* arg);
-	void threadPktHandle();
+	static unsigned __stdcall threadPktHandleEntry(void* arg);
+	void threadPktHandle2();
 
 	// 初始化 Windows socket 环境。
 	// WSAStartup 成功后，后面的 socket/bind/listen/accept 才能正常使用。
@@ -421,6 +479,8 @@ private:
 		pack.Data(strOut);
 		return send(m_Sock, strOut.c_str(), (int)strOut.size(), 0) > 0;
 	}
+
+	void sendPack(UINT nMsg, WPARAM wParam/*缓冲区的值*/, LPARAM lParam/*缓冲区长度*/);
 
 	// 保存全局唯一的 CClientSocket 对象地址。
 	static CClientSocket* m_Instance;

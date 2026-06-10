@@ -154,33 +154,18 @@ void CClientController::CloseSocket()
 	CClientSocket::getInstance()->CloseSocket();
 }
 
-int CClientController::SendCommandPacket(
+bool CClientController::SendCommandPacket(
+	HWND hWnd,//收到数据包后，需要应答给哪个窗口
 	int nCmd,
 	BYTE* pData,
 	size_t nLength,
-	std::list<CPacket>* plstAckPkts,
 	bool bIsAutoClosed
 )
 {
-	HANDLE hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-	CPacket reqPkt(nCmd, pData, nLength, hEvent);//请求包
-	std::list<CPacket> lstAckPkts;//应答结果包
-	if (plstAckPkts == NULL)
-	{
-		plstAckPkts = &lstAckPkts;
-	}
-
+	CPacket reqPkt(nCmd, pData, nLength);//请求包
 	CClientSocket* pClient = CClientSocket::getInstance();
-	pClient->bSendPkt(reqPkt, *plstAckPkts, bIsAutoClosed);
-
-	CloseHandle(hEvent);//回收事件句柄，防止资源耗尽
-
-	if (plstAckPkts->size() > 0)
-	{
-		return plstAckPkts->front().sCmd;
-	}
-
-	return -1;
+	
+	return pClient->bSendPkt(hWnd, reqPkt, bIsAutoClosed);
 }
 
 int CClientController::loadImage(CImage& image)
@@ -246,6 +231,7 @@ void CClientController::threadDownloadFile()
 	do 
 	{
 		int nRetCmd = SendCommandPacket(
+			m_remoteDlg,
 			4,
 			(BYTE*)(LPCSTR)m_strRemoteFilePath,
 			m_strRemoteFilePath.GetLength()
@@ -325,7 +311,7 @@ void CClientController::threadWatchScreen()
 		if (!m_watchDlg.bIsFull())
 		{
 			std::list<CPacket> lstAckPkts;
-			int nRetCmd = SendCommandPacket(6, NULL, 0, &lstAckPkts, false);
+			bool nRetCmd = SendCommandPacket(m_watchDlg.GetSafeHwnd(), 6, NULL, 0, false);
 			if (nRetCmd == 6)
 			{
 				int nLoadRet = CEdoyunTool::nBytes2Image(m_watchDlg.getImage(),
