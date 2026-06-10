@@ -184,7 +184,7 @@ HCURSOR CRemoteClientDlg::OnQueryDragIcon()
 
 void CRemoteClientDlg::OnBnClickedBtnTest()
 {
-	CClientController::getInstance()->SendCommandPacket(1981);
+	CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(),1981);
 }
 
 void CRemoteClientDlg::OnBnClickedBtnFileinfo()
@@ -192,10 +192,10 @@ void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 	// TODO: 在此添加控件通知处理程序代码
 	std::list<CPacket> lstAckPkts;
 	int nRet = CClientController::getInstance()->SendCommandPacket(
+		GetSafeHwnd(),
 		1,
 		NULL, 
-		0, 
-		&lstAckPkts
+		0 
 	);
 	if (nRet == -1 || lstAckPkts.size() <= 0)
 	{
@@ -240,6 +240,7 @@ void CRemoteClientDlg::LoadFileCurrent()
 
 	CClientController* pController = CClientController::getInstance();
 	int nCmd = pController->SendCommandPacket(
+		GetSafeHwnd(),
 		2,  
 		(BYTE*)(LPCSTR)strPath, 
 		strPath.GetLength()
@@ -288,10 +289,10 @@ void CRemoteClientDlg::LoadFileInfo()
 	CClientController* pController = CClientController::getInstance();
 	std::list<CPacket> lstAckPkts;
 	int nCmd = pController->SendCommandPacket(
+		GetSafeHwnd(),
 		2, 
 		(BYTE*)(LPCSTR)strPath, 
 		strPath.GetLength(),
-		&lstAckPkts,
 		false
 	);
 	if (lstAckPkts.size() > 0)
@@ -420,6 +421,7 @@ void CRemoteClientDlg::OnDeleteFile()
 	CString strFilePath = GetPath(hSelected) + strFileName;
 
 	int nRetCmd = CClientController::getInstance()->SendCommandPacket(
+		GetSafeHwnd(),
 		9, 
 		(BYTE*)(LPCSTR)strFilePath, 
 		strFilePath.GetLength()
@@ -444,6 +446,7 @@ void CRemoteClientDlg::OnRunFile()
 	CString strFilePath = GetPath(hSelected) + strFileName;
 
 	int nRetCmd = CClientController::getInstance()->SendCommandPacket(
+		GetSafeHwnd(),
 		3, 
 		(BYTE*)(LPCSTR)strFilePath, 
 		strFilePath.GetLength()

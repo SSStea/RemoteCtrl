@@ -32,132 +32,119 @@ std::string GetSockErrInfo(int wsaErrcode)
 	return ret;
 }
 
-bool CClientSocket::bSendPkt(const CPacket& reqPkt, std::list<CPacket>& out_lstAckPkts, 
-	bool bIsAutoClosed)
+bool CClientSocket::bSendPkt(HWND hWnd, const CPacket& reqPkt, bool bIsAutoClosed)
 {
-	if (m_Sock == INVALID_SOCKET && m_hPktThread == INVALID_HANDLE_VALUE)
+	if (m_hPktThread == INVALID_HANDLE_VALUE)
 	{
-		/*if (!bInitSocket())
-		{
-			return false;
-		}*/
-		m_hPktThread = (HANDLE)_beginthread(&CClientSocket::threadPktHandleEntry, 0, this);
+		m_hPktThread = (HANDLE)_beginthreadex(
+			NULL,
+			0,
+			&CClientSocket::threadPktHandleEntry,
+			this,
+			0,
+			&m_hPktThreadID
+		);
 	}
+	UINT nMode = bIsAutoClosed ? CSM_AUTOCLOSE : 0;
+	std::string strOut;
+	reqPkt.Data(strOut);
+	bool bRet = PostThreadMessage(
+		m_hPktThreadID, 
+		WM_SEND_PACK, 
+		(WPARAM)new PACKETDATA(strOut.c_str(),strOut.size(),nMode), 
+		(LPARAM)hWnd
+	);
 
-	m_lock.lock();
-	m_mapAck.insert(std::pair<HANDLE,
-		std::list<CPacket>&>(reqPkt.hEvent, out_lstAckPkts));
-	m_mapAutoClsoed.insert(std::pair<HANDLE, bool>(reqPkt.hEvent, bIsAutoClosed));
-	TRACE("cmd %d event %08X thread id %d\r\n", reqPkt.sCmd, reqPkt.hEvent, GetCurrentThreadId());
-	m_lstSendPkt.push_back(reqPkt);
-	m_lock.unlock();
-
-	WaitForSingleObject(reqPkt.hEvent, INFINITE);
-
-	auto it = m_mapAck.find(reqPkt.hEvent);
-	if (it != m_mapAck.end())
-	{
-		m_lock.lock();
-		m_mapAck.erase(it);
-		m_lock.unlock();
-
-		return true;
-	}
-	return false;
+	return bRet;
 }
 
-void CClientSocket::threadPktHandleEntry(void* arg)
+unsigned CClientSocket::threadPktHandleEntry(void* arg)
 {
 	CClientSocket* thiz = (CClientSocket*)arg;
-	thiz->threadPktHandle();
+	thiz->threadPktHandle2();
 
-	_endthread();
+	_endthreadex(0);
+
+	return 0;
 }
 
-void CClientSocket::threadPktHandle()
+void CClientSocket::threadPktHandle2()
 {
-	std::string strBuffer;
-	strBuffer.resize(BUFFER_SIZE);
-	char* pBuffer = (char*)strBuffer.c_str();
-	int nIndex = 0;
-
-	bInitSocket();
-
-	while (m_Sock != INVALID_SOCKET)
+	MSG msg;
+	while (::GetMessage(&msg, NULL, 0, 0))
 	{
-		if (m_lstSendPkt.size() > 0)
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+		
+		if (m_mapPktFunc.find(msg.message) != m_mapPktFunc.end())
 		{
-			TRACE("lst Send Size = %d\r\n", m_lstSendPkt.size());
+			(this->*m_mapPktFunc[msg.message])(msg.message, msg.wParam, msg.lParam);
+			
+		}
+	}
+}
 
-			m_lock.lock();
-			CPacket& head = m_lstSendPkt.front();
-			m_lock.unlock();
+void CClientSocket::sendPack(UINT nMsg, WPARAM wParam, LPARAM lParam)
+{
+	PACKETDATA pktData = *(PACKETDATA*)wParam;
+	delete (PACKETDATA*)wParam;
 
-			if (!bSend(head))
+	HWND hWnd = (HWND)lParam;
+
+	if (bInitSocket())
+	{
+		int ret = send(m_Sock, (char*)pktData.strData.c_str(), (int)pktData.strData.size(), 0);
+		if (ret > 0)
+		{
+			int nIndex = 0; 
+			std::string strBuffer;
+			strBuffer.resize(BUFFER_SIZE);
+			char* pBuffer = (char*)strBuffer.c_str();
+			while (m_Sock != INVALID_SOCKET)
 			{
-				TRACE("发送失败！！\r\n");
-				continue;
-			}
-
-			auto itAckPtks = m_mapAck.find(head.hEvent);
-			auto itAutoClose = m_mapAutoClsoed.find(head.hEvent);
-			if (itAckPtks != m_mapAck.end() && itAutoClose != m_mapAutoClsoed.end())
-			{
-				do
+				int nRecvLen = recv(m_Sock, pBuffer + nIndex, BUFFER_SIZE - nIndex, 0);
+				if (nRecvLen > 0 || nIndex > 0)
 				{
-					int nRecvLen = recv(m_Sock, pBuffer + nIndex, BUFFER_SIZE - nIndex, 0);
-					TRACE("recv len = %d\r\n", nRecvLen);
-					if (nRecvLen > 0 || nIndex > 0)//表示读到或者缓冲区里有数据
+					//更新数据在buffer中的存储索引值index：将recv的数据长度len加到上一次的index
+					nIndex += nRecvLen;
+					//将buffer存储的数据长度改为当前buffer存储数据的索引位置
+					size_t nSize = (size_t)nIndex;
+					//按引用传入当前数据的长度len，将buffer解析，将数据封装为Packet并返回封装了的数据的长度len
+					CPacket pack((BYTE*)pBuffer, nSize);
+					if (nSize > 0)
 					{
-						//更新数据在buffer中的存储索引值index：将recv的数据长度len加到上一次的index
-						nIndex += nRecvLen;
-						//将buffer存储的数据长度改为当前buffer存储数据的索引位置
-						size_t nSize = (size_t)nIndex;
-						//按引用传入当前数据的长度len，将buffer解析，将数据封装为Packet并返回封装了的数据的长度len
-						CPacket pack((BYTE*)pBuffer, nSize);
-						if (nSize > 0)
+						::SendMessage(hWnd, WM_SEND_ACK, (WPARAM)new CPacket(pack), 0);
+						//将解析到的数据从buffer中移走
+						memmove(pBuffer, pBuffer + nSize, nIndex - nSize);
+						//变更数据在buffer中的存储索引值index，减掉解析到的数据长度len
+						nIndex -= (int)nSize;
+
+						if(pktData.nMode & CSM_AUTOCLOSE)
 						{
-							//TODO:通知对应事件
-							pack.hEvent = head.hEvent;
-							itAckPtks->second.push_back(pack);
-							//将解析到的数据从buffer中移走
-							memmove(pBuffer, pBuffer + nSize, nIndex - nSize);
-							//变更数据在buffer中的存储索引值index，减掉解析到的数据长度len
-							nIndex -= nSize;
-							if (itAutoClose->second)
-							{
-								SetEvent(head.hEvent);
-								break;
-							}
+							CloseSocket();
+							return;
 						}
 					}
-					else if (nRecvLen <= 0 && nIndex <= 0)
-					{
-						CloseSocket();
-						//等待服务器关闭之后再通知这个命令的接收包事件完成
-						SetEvent(head.hEvent);
-						break;
-					}
-				} while (!itAutoClose->second);
-			}
-
-			m_lock.lock();
-			m_mapAutoClsoed.erase(itAutoClose);
-			m_lock.unlock();
-			
-			m_lock.lock();
-			m_lstSendPkt.pop_front();
-			m_lock.unlock();
-
-			if (!bInitSocket())
-			{
-				bInitSocket();
+				}
+				else
+				{
+					CloseSocket();
+					::SendMessage(hWnd, WM_SEND_ACK, NULL, 1);
+					TRACE("发送应答包结束！！");
+				}
 			}
 		}
 		else
 		{
-			Sleep(1);
+			CloseSocket();
+			::SendMessage(hWnd, WM_SEND_ACK, NULL, -1);
+			TRACE("发送请求包失败！！");
 		}
 	}
-	CloseSocket();
+	else
+	{
+		::SendMessage(hWnd, WM_SEND_ACK, NULL, -2);
+		TRACE("网络初始化失败！！");
+
+	}
 }
