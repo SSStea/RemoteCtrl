@@ -18,6 +18,8 @@ CWatchDialog::CWatchDialog(CWnd* pParent /*=nullptr*/)
 {
 	m_nObjWidth = -1;
 	m_nObjHeight = -1;
+	m_bMouseMoveDirty = false;
+	m_bMouseMovePending = false;
 }
 
 CWatchDialog::~CWatchDialog()
@@ -32,6 +34,7 @@ void CWatchDialog::DoDataExchange(CDataExchange* pDX)
 
 
 BEGIN_MESSAGE_MAP(CWatchDialog, CDialog)
+	ON_WM_PAINT()
 	ON_WM_TIMER()
 	ON_WM_LBUTTONDBLCLK()
 	ON_WM_LBUTTONDOWN()
@@ -56,6 +59,7 @@ BOOL CWatchDialog::OnInitDialog()
 
 	// TODO:  在此添加额外的初始化
 	//SetTimer(0, 50, NULL);
+	SetTimer(TIMER_MOUSE_MOVE, 33, NULL);//鼠标移动的定时器，约30hz
 
 	CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(), 6, NULL, 0, false);
 
@@ -65,35 +69,29 @@ BOOL CWatchDialog::OnInitDialog()
 
 void CWatchDialog::OnTimer(UINT_PTR nIDEvent)
 {
-	//if (nIDEvent == 0)
-	//{
-	//	CClientController* pController = CClientController::getInstance();
-	//	if (m_bIsFull)
-	//	{
-	//		m_nObjHeight = m_image.GetHeight();
-	//		m_nObjWidth = m_image.GetWidth();
+	if (nIDEvent == TIMER_MOUSE_MOVE &&
+		m_bMouseMoveDirty &&
+		!m_bMouseMovePending)
+	{
+		MOUSEEVENT event;
+		event.ptXY = m_ptLatestRemote;
+		event.nButton = 4;
+		event.nAction = 4;
 
-	//		CRect rect;//定义一个矩形对象，用来保存 m_picture 控件的位置和大小信息
-	//		 获取 m_picture 控件在屏幕坐标中的矩形区域，这里主要使用它的宽度和高度
-	//		m_picture.GetWindowRect(rect);
-	//		CDC* pDC = m_picture.GetDC();
+		bool bSent = CClientController::getInstance()->SendCommandPacket(
+			GetSafeHwnd(),
+			5,
+			reinterpret_cast<BYTE*>(&event),
+			sizeof(event)
+		);
 
-	//		m_image.StretchBlt(//StretchBlt会把图片拉伸到指定的目标区域大小
-	//			pDC->GetSafeHdc(), // 获取 m_picture 控件的 HDC，用于绘图
-	//			0,								// 目标区域左上角 x 坐标
-	//			0,								// 目标区域左上角 y 坐标
-	//			rect.Width(),					// 目标绘制宽度，等于控件宽度
-	//			rect.Height(),					// 目标绘制高度，等于控件高度
-	//			SRCCOPY							// 直接复制源图像到目标区域
-	//		);//将父窗口中保存的图片绘制到 m_picture 控件的设备上下文上
-	//		m_picture.InvalidateRect(NULL);// 通知系统 m_picture 控件需要重绘：NULL表示整个控件区域都需要刷新
+		if (bSent)
+		{
+			m_bMouseMoveDirty = false;
+			m_bMouseMovePending = true;
+		}
+	}
 
-	//		TRACE("更新图片完成 %d %d %08X\r\n", m_nObjWidth, m_nObjHeight, (HBITMAP)m_image);
-	//		m_image.Destroy();// 销毁父窗口中保存的图片资源，释放内存
-	//		m_picture.ReleaseDC(pDC);//释放m_picture的DC，避免 GDI 资源泄漏
-	//		setImageStatus();// 更新图片状态，例如标记当前图片已经处理完成
-	//	}
-	//}
 	CDialog::OnTimer(nIDEvent);
 }
 
@@ -259,27 +257,19 @@ void CWatchDialog::OnRButtonUp(UINT nFlags, CPoint point)
 	CDialog::OnRButtonUp(nFlags, point);
 }
 
-void CWatchDialog::OnMouseMove(UINT nFlags, CPoint point)
+void CWatchDialog::OnMouseMove(UINT nFlags, CPoint point)//只记录最新坐标
 {
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
-	if (m_nObjHeight != -1 && m_nObjWidth != -1)
+	CRect rectPicture;
+	m_picture.GetWindowRect(&rectPicture);
+	ScreenToClient(&rectPicture);
+
+	if (rectPicture.PtInRect(point) &&
+		m_nObjWidth > 0 &&
+		m_nObjHeight > 0)
 	{
-		CPoint remote = UserPoint2RemoteScreenPoint(point);
-
-		MOUSEEVENT event;
-		event.ptXY = remote;
-		event.nButton = 4;
-		event.nAction = 4;//移动
-
-		//TODO:网络通信和Client对话框有耦合，这是一个设计隐患，想要通信必须要调用对话框
-		//对话框是V层（视图层），通信是C层（控制层），对话框依赖通信：V ==> C是可以的，但是
-		//如果通信却要依赖对话框：C ==> V这样是不可以的，后续需要改善
-		CClientController::getInstance()->SendCommandPacket(
-			GetSafeHwnd(),
-			5,
-			(BYTE*)&event,
-			sizeof(event)
-		);
+		m_ptLatestRemote = UserPoint2RemoteScreenPoint(point);
+		m_bMouseMoveDirty = true;
 	}
 
 	CDialog::OnMouseMove(nFlags, point);
@@ -328,6 +318,34 @@ void CWatchDialog::OnBnClickedBtnUnlock()
 	CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(), 8);
 }
 
+void CWatchDialog::OnPaint()
+{
+	CPaintDC dc(this);
+
+	if (m_image.IsNull() || !::IsWindow(m_picture.GetSafeHwnd()))
+	{
+		return;
+	}
+
+	CRect rect;//定义一个矩形对象，用来保存 m_picture 控件的位置和大小信息
+	// 获取 m_picture 控件在屏幕坐标中的矩形区域，这里主要使用它的宽度和高度
+	m_picture.GetWindowRect(rect);
+	ScreenToClient(&rect);
+
+	if(dc != NULL)
+	{
+		m_image.StretchBlt(//StretchBlt会把图片拉伸到指定的目标区域大小
+			dc.GetSafeHdc(), // 获取 m_picture 控件的 HDC，用于绘图
+			0,								// 目标区域左上角 x 坐标
+			0,								// 目标区域左上角 y 坐标
+			rect.Width(),					// 目标绘制宽度，等于控件宽度
+			rect.Height(),					// 目标绘制高度，等于控件高度
+			SRCCOPY							// 直接复制源图像到目标区域
+		);//将父窗口中保存的图片绘制到 m_picture 控件的设备上下文上
+	}
+	TRACE("更新图片完成 %d %d %08X\r\n", m_nObjWidth, m_nObjHeight, (HBITMAP)m_image);
+}
+
 LRESULT CWatchDialog::OnHandleAckPkt(WPARAM wParam, LPARAM lParam)
 {
 	if (lParam == -1 || lParam == -2)
@@ -355,44 +373,29 @@ LRESULT CWatchDialog::OnHandleAckPkt(WPARAM wParam, LPARAM lParam)
 		{
 		case 6:
 			{
-				HRESULT hRet = CEdoyunTool::nBytes2Image(m_image, pAckPkt.strData);
-				if(hRet != S_OK)
+				CImage imageNew;
+				HRESULT hRet = CEdoyunTool::nBytes2Image(imageNew, pAckPkt.strData);
+				if(hRet != S_OK || imageNew.IsNull())
 				{
 					TRACE("图像设置失败！！ %d", hRet);
 					break;
 				}
 
+				m_image.Destroy();
+				m_image.Attach(imageNew.Detach());
+
 				m_nObjHeight = m_image.GetHeight();
 				m_nObjWidth = m_image.GetWidth();
 
-				CRect rect;//定义一个矩形对象，用来保存 m_picture 控件的位置和大小信息
-				// 获取 m_picture 控件在屏幕坐标中的矩形区域，这里主要使用它的宽度和高度
-				m_picture.GetWindowRect(rect);
-
-				CDC* pDC = m_picture.GetDC();
-				if(pDC != NULL)
-				{
-					m_image.StretchBlt(//StretchBlt会把图片拉伸到指定的目标区域大小
-						pDC->GetSafeHdc(), // 获取 m_picture 控件的 HDC，用于绘图
-						0,								// 目标区域左上角 x 坐标
-						0,								// 目标区域左上角 y 坐标
-						rect.Width(),					// 目标绘制宽度，等于控件宽度
-						rect.Height(),					// 目标绘制高度，等于控件高度
-						SRCCOPY							// 直接复制源图像到目标区域
-					);//将父窗口中保存的图片绘制到 m_picture 控件的设备上下文上
-
-					m_picture.ReleaseDC(pDC);//释放m_picture的DC，避免 GDI 资源泄漏
-				}
-				m_picture.InvalidateRect(NULL);// 通知系统 m_picture 控件需要重绘：NULL表示整个控件区域都需要刷新
-
-				TRACE("更新图片完成 %d %d %08X\r\n", m_nObjWidth, m_nObjHeight, (HBITMAP)m_image);
-				m_image.Destroy();// 销毁父窗口中保存的图片资源，释放内存
+				Invalidate(FALSE);
 				
 				Sleep(100);
 				CClientController::getInstance()->SendCommandPacket(GetSafeHwnd(), 6, NULL, 0, false);
 			}
 			break;
 		case 5:
+			m_bMouseMovePending = false;
+			break;
 		case 7:
 		case 8:
 		default:
