@@ -71,6 +71,9 @@
     <ClCompile Include="ClientController.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="EdoyunTool.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="RemoteClient.rc">

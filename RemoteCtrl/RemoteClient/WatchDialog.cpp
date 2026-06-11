@@ -13,6 +13,11 @@
 
 IMPLEMENT_DYNAMIC(CWatchDialog, CDialog)
 
+CImage& CWatchDialog::getImage()
+{
+		return m_image;
+	}
+
 CWatchDialog::CWatchDialog(CWnd* pParent /*=nullptr*/)
 	: CDialog(IDD_DLG_WATCH, pParent)
 {
