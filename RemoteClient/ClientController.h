@@ -51,28 +51,14 @@ public:
 	void StartWatchScreen();
 
 protected:
-	CClientController():m_statusDlg(&m_remoteDlg), m_watchDlg(&m_remoteDlg)
-	{
-		m_hThread			= INVALID_HANDLE_VALUE;
-		m_nThreadID			= -1;
-	}
+	CClientController();
 
-	~CClientController()
-	{
-		WaitForSingleObject(m_hThread, 100);
-	}
+	~CClientController();
 
 	static unsigned __stdcall threadMsgHandleEntry(void* arg);
 	void threadMsgHandle();
 
-	static void releaseInstance()
-	{
-		if (m_Instance != NULL)
-		{
-			delete m_Instance;
-			m_Instance = NULL;
-		}
-	}
+	static void releaseInstance();
 
 	LRESULT OnSendPack(UINT nMsg, WPARAM wParam, LPARAM lParam);
 	LRESULT OnSendData(UINT nMsg, WPARAM wParam, LPARAM lParam);
@@ -82,25 +68,9 @@ protected:
 private:
 	typedef struct MsgInfo
 	{
-		MsgInfo(MSG m)
-		{
-			result = 0;
-			memcpy(&msg, &m, sizeof(MSG));
-		}
-		MsgInfo(const MsgInfo& m)
-		{
-			result = m.result;
-			memcpy(&msg, &m.msg, sizeof(MSG));
-		}
-		MsgInfo operator=(const MsgInfo& m)
-		{
-			if (this != &m)
-			{
-				result = m.result;
-				memcpy(&msg, &m.msg, sizeof(MSG));
-			}
-			return *this;
-		}
+		MsgInfo(MSG m);
+		MsgInfo(const MsgInfo& m);
+		MsgInfo operator=(const MsgInfo& m);
 		MSG		msg;
 		LRESULT result;
 	} MSGINFO;
@@ -126,19 +96,11 @@ private:
 	public:
 		// 程序启动时，静态成员 m_helper 会先构造。
 		// 这里主动调用 getInstance，让 Controller 管理对象提前创建。
-		CHelper()
-		{
-			//m_helper是静态成员，构造会先于main函数构造，窗口类的构造函数会调用theApp的
-			// main构造，由于main函数还没有构造完，此时先构造窗口类就会产生错误
-			//CClientController::getInstance();
-		}
+		CHelper();
 
 		// 程序结束时，静态成员 m_helper 会析构。
 		// 这里释放单例对象，完成资源清理。
-		~CHelper()
-		{
-			CClientController::releaseInstance();
-		}
+		~CHelper();
 	};
 
 	// 辅助释放单例的静态对象。

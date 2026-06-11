@@ -5,6 +5,60 @@ std::map<UINT, CClientController::MSGFUNC> CClientController::m_mapMsgFunc;
 CClientController* CClientController::m_Instance = NULL;
 CClientController::CHelper CClientController::m_helper;
 
+CClientController::CHelper::CHelper()
+{
+			//m_helper是静态成员，构造会先于main函数构造，窗口类的构造函数会调用theApp的
+			// main构造，由于main函数还没有构造完，此时先构造窗口类就会产生错误
+			//CClientController::getInstance();
+		}
+
+CClientController::CHelper::~CHelper()
+{
+			CClientController::releaseInstance();
+		}
+
+CClientController::MsgInfo::MsgInfo(MSG m)
+{
+			result = 0;
+			memcpy(&msg, &m, sizeof(MSG));
+		}
+
+CClientController::MsgInfo::MsgInfo(const MsgInfo& m)
+{
+			result = m.result;
+			memcpy(&msg, &m.msg, sizeof(MSG));
+		}
+
+CClientController::MsgInfo CClientController::MsgInfo::operator=(const MsgInfo& m)
+{
+			if (this != &m)
+			{
+				result = m.result;
+				memcpy(&msg, &m.msg, sizeof(MSG));
+			}
+			return *this;
+		}
+
+CClientController::CClientController():m_statusDlg(&m_remoteDlg), m_watchDlg(&m_remoteDlg)
+{
+		m_hThread			= INVALID_HANDLE_VALUE;
+		m_nThreadID			= -1;
+	}
+
+CClientController::~CClientController()
+{
+		WaitForSingleObject(m_hThread, 100);
+	}
+
+void CClientController::releaseInstance()
+{
+		if (m_Instance != NULL)
+		{
+			delete m_Instance;
+			m_Instance = NULL;
+		}
+	}
+
 CClientController* CClientController::getInstance()
 {
 	if (m_Instance == NULL)

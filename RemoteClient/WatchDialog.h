@@ -25,10 +25,7 @@ public:
 	int m_nObjWidth;
 	int m_nObjHeight;
 
-	CImage& getImage()
-	{
-		return m_image;
-	}
+	CImage& getImage();
 
 
 protected:
