@@ -443,28 +443,31 @@ LRESULT CRemoteClientDlg::OnHandleAckPkt(WPARAM wParam, LPARAM lParam)
 		}
 			break;
 		case 2:
-		{
-			pFILEINFO pInfo = (pFILEINFO)pAckPkt.strData.c_str();
-			if (!pInfo->bHasNext)
 			{
-				break;
-			}
-			if (pInfo->bIsDirectory)
-			{
-				if (CString(pInfo->szFileName) == "." ||
-					CString(pInfo->szFileName) == "..")
-				{//遇到"."和".."目录就只获取下一个但是不操作
+				pFILEINFO pInfo = (pFILEINFO)pAckPkt.strData.c_str();
+				if (!pInfo->bHasNext)
+				{
+					HTREEITEM hParent = (HTREEITEM)lParam;
+					m_Tree.Expand(hParent, TVE_EXPAND);
 					break;
 				}
+				if (pInfo->bIsDirectory)
+				{
+					if (CString(pInfo->szFileName) == "." ||
+						CString(pInfo->szFileName) == "..")
+					{//遇到"."和".."目录就只获取下一个但是不操作
+						break;
+					}
 
-				HTREEITEM hTemp = m_Tree.InsertItem(pInfo->szFileName, (HTREEITEM)lParam , TVI_LAST);
-				m_Tree.InsertItem("", hTemp, TVI_LAST);
+					HTREEITEM hTemp = m_Tree.InsertItem(pInfo->szFileName, (HTREEITEM)lParam , TVI_LAST);
+					m_Tree.InsertItem("", hTemp, TVI_LAST);
+				}
+				else
+				{
+					m_List.InsertItem(0, pInfo->szFileName);
+				}
 			}
-			else
-			{
-				m_List.InsertItem(0, pInfo->szFileName);
-			}
-		}
+			break;
 		case 3:
 			TRACE("run file done!!\r\n");
 			break;
@@ -483,18 +486,15 @@ LRESULT CRemoteClientDlg::OnHandleAckPkt(WPARAM wParam, LPARAM lParam)
 						break;
 					}
 				}
-				else if (lFileLength > 0 && lIndex >= lFileLength)
+
+				fwrite(pAckPkt.strData.c_str(), 1, pAckPkt.strData.size(), pFile);
+				lIndex += pAckPkt.strData.size();
+				if (lFileLength > 0 && lIndex >= lFileLength)
 				{
 					fclose(pFile);
 					lFileLength = 0;
 					lIndex = 0;
 					CClientController::getInstance()->DonwloadFileEnd();
-				}
-				else
-				{
-					FILE* pFile = (FILE*)lParam;
-					fwrite(pAckPkt.strData.c_str(), 1, pAckPkt.strData.size(), pFile);
-					lIndex += pAckPkt.strData.size();
 				}
 			}
 			break;
