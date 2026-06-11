@@ -38,16 +38,27 @@ public:
 		if (hRet == S_OK)
 		{
 			ULONG  ulLength = 0;
-			pStream->Write(pData, (ULONG)strBuffer.size(), &ulLength);
+			hRet = pStream->Write(pData, (ULONG)strBuffer.size(), &ulLength);
+			if (hRet != S_OK)
+			{
+				TRACE("图像写入流失败！！！\r\n");
+				return hRet;
+			}
 			LARGE_INTEGER begin = { 0 };
-			pStream->Seek(begin, STREAM_SEEK_SET, NULL);
+			hRet = pStream->Seek(begin, STREAM_SEEK_SET, NULL);
+			if (hRet != S_OK)
+			{
+				TRACE("STREAM_SEEK_SET 失败！！！\r\n");
+				return hRet;
+			}
 			if ((HBITMAP)image != NULL)
 			{
 				image.Destroy();
 			}
-			image.Load(pStream);
+			hRet = image.Load(pStream);
 		}
 
+		pStream->Release();
 		return hRet;
 	}
 };
