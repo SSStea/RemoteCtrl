@@ -220,7 +220,5 @@ void CClientController::DonwloadFileEnd()
 void CClientController::StartWatchScreen()
 {
 	m_watchDlg.DoModal();
-
-	SendCommandPacket(m_watchDlg, 6, NULL, 0, false);
 }
 
