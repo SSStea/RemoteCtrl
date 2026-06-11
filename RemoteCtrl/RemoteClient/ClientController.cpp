@@ -198,6 +198,8 @@ int CClientController::DonwloadFile(CString strPath)
 		{
 			AfxMessageBox("下载命令发送失败");
 			fclose(pFile);
+			DonwloadFileEnd();
+			return -1;
 		}
 
 		m_remoteDlg.BeginWaitCursor();

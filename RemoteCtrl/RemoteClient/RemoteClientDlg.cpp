@@ -485,6 +485,7 @@ LRESULT CRemoteClientDlg::OnHandleAckPkt(WPARAM wParam, LPARAM lParam)
 						CClientController::getInstance()->DonwloadFileEnd();
 						break;
 					}
+					break;
 				}
 
 				fwrite(pAckPkt.strData.c_str(), 1, pAckPkt.strData.size(), pFile);
