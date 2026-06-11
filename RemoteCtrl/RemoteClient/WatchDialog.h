@@ -5,6 +5,8 @@
 #define WM_SEND_ACK		(WM_USER+2)//发送应答包
 #endif
 
+static const UINT_PTR TIMER_MOUSE_MOVE = 1;
+
 // CWatchDialog 对话框
 
 class CWatchDialog : public CDialog
@@ -32,6 +34,10 @@ public:
 protected:
 	CImage m_image;//图像缓存
 
+	CPoint m_ptLatestRemote;//鼠标的最后一个本地坐标转化的远程坐标
+	bool   m_bMouseMoveDirty;//表示鼠标位置是否有更新、尚未发送。
+	bool   m_bMouseMovePending;//表示上一次鼠标移动请求是否还在等待服务器应答。
+
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
 
 	DECLARE_MESSAGE_MAP()
@@ -53,4 +59,5 @@ public:
 	afx_msg void OnBnClickedBtnLock();
 	afx_msg void OnBnClickedBtnUnlock();
 	afx_msg LRESULT OnHandleAckPkt(WPARAM wParam, LPARAM lParam);
+	afx_msg void OnPaint();
 };
