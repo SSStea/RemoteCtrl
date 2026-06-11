@@ -412,6 +412,7 @@ LRESULT CRemoteClientDlg::OnHandleAckPkt(WPARAM wParam, LPARAM lParam)
 		{
 			return 0;
 		}
+
 		switch (pAckPkt.sCmd)
 		{
 		case 1:
@@ -470,11 +471,13 @@ LRESULT CRemoteClientDlg::OnHandleAckPkt(WPARAM wParam, LPARAM lParam)
 		case 4:
 			{
 				static long long  lFileLength = 0, lIndex = 0;
+				FILE* pFile = (FILE*)lParam;
 				if (lFileLength == 0)
 				{
-					long long lFileLength = *(long long*)pAckPkt.strData.c_str();
-					if (lFileLength == 0)
+					lFileLength = *(long long*)pAckPkt.strData.c_str();
+					if (lFileLength <= 0)
 					{
+						fclose(pFile);
 						AfxMessageBox("文件长度为零，或着无法读取文件！！");
 						CClientController::getInstance()->DonwloadFileEnd();
 						break;
@@ -482,7 +485,7 @@ LRESULT CRemoteClientDlg::OnHandleAckPkt(WPARAM wParam, LPARAM lParam)
 				}
 				else if (lFileLength > 0 && lIndex >= lFileLength)
 				{
-					fclose((FILE*)lParam);
+					fclose(pFile);
 					lFileLength = 0;
 					lIndex = 0;
 					CClientController::getInstance()->DonwloadFileEnd();

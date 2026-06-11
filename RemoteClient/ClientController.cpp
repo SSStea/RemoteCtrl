@@ -186,7 +186,7 @@ int CClientController::DonwloadFile(CString strPath)
 			return -1;
 		}
 
-		int nRetCmd = SendCommandPacket(
+		bool bRet = SendCommandPacket(
 			m_remoteDlg,
 			4,
 			(BYTE*)(LPCSTR)m_strRemoteFilePath,
@@ -194,6 +194,11 @@ int CClientController::DonwloadFile(CString strPath)
 			false,
 			(LPARAM)pFile
 		);
+		if (!bRet)
+		{
+			AfxMessageBox("下载命令发送失败");
+			fclose(pFile);
+		}
 
 		m_remoteDlg.BeginWaitCursor();
 		m_statusDlg.m_info.SetWindowText(_T("命令正在执行中！！"));
