@@ -6,6 +6,8 @@
 #include "RemoteCtrl.h"
 #include "ServSocket.h"
 
+
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -16,6 +18,398 @@
 CWinApp theApp;
 
 using namespace std;
+
+void Dump(BYTE* pData, size_t nSize)
+{
+    std::string strOut;
+    for (size_t i = 0; i < nSize; i++)
+    {
+        char buf[8] = "";
+        if (i > 0 && (i % 16 == 0))
+        {
+            strOut += "\n";
+        }
+        snprintf(buf, sizeof(buf), "%02X", pData[i] & 0xFF);
+        strOut += buf;
+    }
+    strOut += "\n";
+    OutputDebugStringA(strOut.c_str());
+}
+
+//查看磁盘分区
+#include <direct.h>
+int MakeDriverInfo()//1==>A 2==>B 3==>C ... 26==>Z
+{
+    std::string strRes;
+    for (int i = 1; i <= 26; i++)
+    {
+        if (_chdrive(i) == 0)//代表能切换到这个盘
+        {
+            if (strRes.size() > 0)
+            {
+                strRes += ',';
+            }
+            strRes += ('A' + i - 1);
+        }
+    }
+    CPacket pack(1, (BYTE*)strRes.c_str(), strRes.size());//重载了一个打包用的构造函数
+    Dump((BYTE*)pack.Data(), pack.Size());
+
+    //CServSocket::getInstance()->bSend(pack);
+    return 0;
+}
+
+//查看指定目录下的文件
+#include <io.h>
+#include <list>
+typedef struct file_info
+{
+    file_info()
+    {
+        bIsInvalid = FALSE;
+        bIsDirectory = -1;
+        bHasNext = TRUE;
+        memset(szFileName, 0, sizeof(szFileName));
+    }
+    BOOL bIsInvalid;            //是否无效：0否 1是
+    BOOL bIsDirectory;          //是否为目录：0否 1是
+    BOOL bHasNext;              //是否还有下一个文件：0无 1有
+    char szFileName[256];       //文件名
+}FILEINFO, * pFILEINFO;
+
+int MakeDirecoryInfo()
+{
+    std::string strPath;
+    //std::list<FILEINFO> lstFileInfos;
+
+    if (!(CServSocket::getInstance()->bGetFilePath(strPath)))
+    {
+        OutputDebugString(_T("当前的命令不是获取文件列表，命令解析错误！"));
+        return -1;
+    }
+
+    if (_chdir(strPath.c_str()) != 0)
+    {
+        FILEINFO fInfo;
+        fInfo.bIsInvalid    = TRUE;
+        fInfo.bIsDirectory  = TRUE;
+        fInfo.bHasNext      = FALSE;
+        memcpy(fInfo.szFileName, strPath.c_str(), strPath.size());
+        //lstFileInfos.push_back(fInfo);
+        CPacket pack(2, (BYTE*)&fInfo, sizeof(fInfo));
+        CServSocket::getInstance()->bSend(pack);
+
+        OutputDebugString(_T("无权限访问目录！"));
+        return -2;
+    }
+
+    _finddata_t fData;
+    intptr_t hFind = 0;
+    if ((hFind = _findfirst("*", &fData)) == -1)
+    {
+        OutputDebugString(_T("未找到任何文件！"));
+        return -3;
+    }
+    do {
+        FILEINFO fInfo;
+        fInfo.bIsDirectory = ((fData.attrib & _A_SUBDIR) != 0);
+                            //(fData.attrib & _A_SUBDIR) != 0 ==>TRUE
+        memcpy(fInfo.szFileName, fData.name, strlen(fData.name));
+        //lstFileInfos.push_back(fInfo);
+        CPacket pack(2, (BYTE*)&fInfo, sizeof(fInfo));
+        CServSocket::getInstance()->bSend(pack);//获取一个文件就发送一个
+    } while (!_findnext(hFind, &fData));
+    
+    FILEINFO fInfo;
+    fInfo.bHasNext = FALSE;//告诉控制端没有下一个文件了，不必继续等待
+    CPacket pack(2, (BYTE*)&fInfo, sizeof(fInfo));
+    CServSocket::getInstance()->bSend(pack);
+
+    return 0;
+}
+
+//运行文件
+int RunFile()
+{
+    std::string strPath;
+
+    CServSocket::getInstance()->bGetFilePath(strPath);
+    ShellExecuteA(NULL, NULL, strPath.c_str(), NULL, NULL, SW_SHOWNORMAL);
+
+    CPacket pack(3, NULL, 0);
+    CServSocket::getInstance()->bSend(pack);
+
+    return 0;
+}
+
+//下载文件
+int DownLoadFile()
+{
+    std::string strPath;
+    long long data = 0;
+
+    CServSocket::getInstance()->bGetFilePath(strPath);
+    FILE* pFile = NULL;
+    errno_t err = fopen_s(&pFile, strPath.c_str(), "rb");
+    if (err != 0)
+    {
+        CPacket pack(4, (BYTE*)&data, 8);
+        CServSocket::getInstance()->bSend(pack);
+        return -1;
+    }
+
+    if(pFile != NULL)
+    {
+        fseek(pFile, 0, SEEK_END);
+        data = _ftelli64(pFile);
+        CPacket head(4, (BYTE*)&data, 8);
+        fseek(pFile, 0, SEEK_SET);
+        CServSocket::getInstance()->bSend(head);
+
+        char buffer[1024] = "";
+        size_t rlen = 0;
+        do {
+            rlen = fread(buffer, 1, 1024, pFile);
+            CPacket pack(4, (BYTE*)buffer, rlen);
+            CServSocket::getInstance()->bSend(pack);
+        } while (rlen >= 1024);
+
+        fclose(pFile);
+    }
+    CPacket pack(4, NULL, 0);
+    CServSocket::getInstance()->bSend(pack);
+
+    return 0;
+}
+
+//操作鼠标
+int MouseEvent()
+{
+    MOUSEEVENT mouse;
+
+    if (CServSocket::getInstance()->bGetMouseEvent(mouse))
+    {
+        DWORD nFlag = 0;
+        switch (mouse.nButton)
+        {
+        case 0://左键
+            nFlag = 1;
+            break;
+        case 1://右键
+            nFlag = 2;
+            break;
+        case 2://中键
+            nFlag = 4;
+            break;
+        case 4://没有按键
+            nFlag = 8;
+            break;
+        }
+
+        if (nFlag != 8)
+        {
+            SetCursorPos(mouse.ptXY.x, mouse.ptXY.y);
+        }
+        switch (mouse.nAction)
+        {
+        case 0://单击
+            nFlag |= 0x10;
+            break;
+        case 1://双击
+            nFlag |= 0x20;
+            break;
+        case 2://按住
+            nFlag |= 0x40;
+            break;
+        case 3://放开
+            nFlag |= 0x80;
+            break;
+        default:
+            break;
+        }
+
+        switch (nFlag)
+        {
+        case 0x21://左键双击
+            mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, GetMessageExtraInfo());
+            mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, GetMessageExtraInfo());
+        case 0x11://左键单击
+            mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, GetMessageExtraInfo());
+            mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, GetMessageExtraInfo());
+            break;
+        case 0x41://左键按下
+            mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, GetMessageExtraInfo());
+            break;
+        case 0x81://左键松开
+            mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, GetMessageExtraInfo());
+            break;
+        case 0x22://右键双击
+            mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, GetMessageExtraInfo());
+            mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, GetMessageExtraInfo());
+        case 0x12://右键单击
+            mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, GetMessageExtraInfo());
+            mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, GetMessageExtraInfo());
+            break;
+        case 0x42://右键按住
+            mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, GetMessageExtraInfo());
+            break;
+        case 0x82://右键松开
+            mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, GetMessageExtraInfo());
+            break;
+        case 0x24://中键双击
+            mouse_event(MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, GetMessageExtraInfo());
+            mouse_event(MOUSEEVENTF_MIDDLEUP, 0, 0, 0, GetMessageExtraInfo());
+        case 0x14://中键单击
+            mouse_event(MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, GetMessageExtraInfo());
+            mouse_event(MOUSEEVENTF_MIDDLEUP, 0, 0, 0, GetMessageExtraInfo());
+            break;
+        case 0x44://中键按住
+            mouse_event(MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, GetMessageExtraInfo());
+            break;
+        case 0x84://中键松开
+            mouse_event(MOUSEEVENTF_MIDDLEUP, 0, 0, 0, GetMessageExtraInfo());
+            break;
+        case 0x08://单纯鼠标移动
+            mouse_event(MOUSEEVENTF_MOVE, mouse.ptXY.x, mouse.ptXY.y, 0, GetMessageExtraInfo());
+            break;
+        }
+
+        CPacket pack(4, NULL, 0);
+        CServSocket::getInstance()->bSend(pack);
+    }
+    else
+    {
+        OutputDebugString(_T("获取鼠标操作参数失败！！"));
+        return -1; 
+    }
+
+    return 0;
+}
+
+//发送屏幕截图
+#include <atlimage.h>
+int SendScreen()
+{
+    CImage screen;//C++封装的关于图像的类
+    HDC hScreen = ::GetDC(NULL);//获取设备的上下文
+    int nBitPixel = GetDeviceCaps(hScreen, BITSPIXEL);//获取设备的多个属性：得到位宽
+    int nWidth = GetDeviceCaps(hScreen, HORZRES);//得到宽度
+    int nHeight = GetDeviceCaps(hScreen, VERTRES);//得到高度
+
+    screen.Create(nWidth, nHeight, nBitPixel);
+    BitBlt(screen.GetDC(), 0, 0, 1920, 1020, hScreen, 0, 0, SRCCOPY);
+    ReleaseDC(NULL, hScreen);
+
+    HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, 0);//获取全局可移动的内存
+    if (hMem == NULL)
+    {
+        return -1;
+    }
+    IStream* pStream = NULL;//建立一个内存流，利用Save的重载函数
+    HRESULT hRet = CreateStreamOnHGlobal(hMem, TRUE, &pStream);
+    if(hRet == S_OK)
+    {
+        screen.Save(pStream, Gdiplus::ImageFormatPNG);
+        LARGE_INTEGER begin = { 0 };
+        pStream->Seek(begin, STREAM_SEEK_SET, NULL);//将内存流的指针设置到流的头部
+        PBYTE pData = (PBYTE)GlobalLock(hMem);//必须要lock，不然hMem和pStream是分离的，读不到数据
+        SIZE_T nSize = GlobalSize(hMem);
+        CPacket pack(6, pData, nSize);//将读出来的内存数据打包
+        CServSocket::getInstance()->bSend(pack);
+        GlobalUnlock(hMem);
+    }
+
+    pStream->Release();
+    GlobalFree(hMem);
+    screen.ReleaseDC();
+
+    /*
+    DWORD tick = GetTickCount64();
+    screen.Save(_T("test2020.png"), Gdiplus::ImageFormatPNG);
+    TRACE("png %d\r\n", GetTickCount64() - tick);
+    tick = GetTickCount64();
+    screen.Save(_T("test2020.jpg"), Gdiplus::ImageFormatJPEG);
+    TRACE("jpg %d\r\n", GetTickCount64() - tick);
+    screen.ReleaseDC();
+    */
+
+    return 0;
+}
+
+#include "LockInfoDialog.h"
+CLockInfoDialog dlg;
+unsigned int threadid = 0;
+
+unsigned _stdcall threadLockDlg(void* arg)
+{
+    TRACE("%s(%d): %d\r\n", __FUNCTION__, __LINE__, GetCurrentThreadId());
+    dlg.Create(IDD_DIALOG_INFO, NULL);//非模态Dialog创建
+    dlg.ShowWindow(SW_SHOW);//显示窗口
+    CRect rect;
+    rect.left = 0;
+    rect.top = 0;
+    rect.right = GetSystemMetrics(SM_CXFULLSCREEN);
+    rect.bottom = GetSystemMetrics(SM_CYFULLSCREEN);
+    rect.bottom *= 1.07;
+    dlg.MoveWindow(rect);//设置窗口显示大小
+    dlg.SetWindowPos(&dlg.wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);//窗口置顶
+
+    ShowCursor(FALSE);//不显示鼠标
+    ::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_HIDE);//隐藏任务栏
+
+    dlg.GetWindowRect(rect);
+    rect.left = 0;
+    rect.top = 0;
+    rect.right = 1;
+    rect.bottom = 1;
+    ClipCursor(rect);//限制鼠标活动范围
+
+    MSG msg;
+    while (GetMessage(&msg, NULL, 0, 0))
+    {//MFC编程是基于消息循环的，所以必须有这个循环对话框才显示
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+        if (msg.message == WM_KEYDOWN && msg.wParam == 0x1B)//按下ESC退出
+        {
+            TRACE("msg: %08X, wparam: %08X, lparam: %08X\r\n",
+                msg.message, msg.wParam, msg.lParam);
+            break;
+        }
+    }
+
+	::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_SHOW);
+	ShowCursor(TRUE);
+    dlg.DestroyWindow();
+
+    _endthreadex(0);
+    return 0;
+}
+
+int LockMachine()
+{
+    if (dlg.m_hWnd == NULL || dlg.m_hWnd == INVALID_HANDLE_VALUE)
+	{
+		//_beginthread(threadLockDlg, 0, NULL);//放到一个线程里，避免消息死循环接收不到unlock
+        _beginthreadex(NULL, 0, threadLockDlg, NULL, 0, &threadid);
+        TRACE("threadid: %d\r\n", threadid);
+    }
+
+	CPacket pack(7, NULL, 0);
+	CServSocket::getInstance()->bSend(pack);
+	return 0;
+}
+
+int UnLockMachine()
+{
+    //前两个方法不可以的原因是LockMachine是用线程控制的，线程只能接收到自己线程的消息，
+    // 所以需要用PostThreadMessage方法给对应线程发消息
+	//dlg.SendMessage(WM_KEYDOWN, 0x1B, 00010001);
+    //::SendMessage(dlg.m_hWnd, WM_KEYDOWN, 0x1B, 00010001);
+    PostThreadMessage(threadid, WM_KEYDOWN, 0x1B, 00010001);
+	CPacket pack(8, NULL, 0);
+	CServSocket::getInstance()->bSend(pack);
+	return 0;
+}
 
 int main()
 {
@@ -38,43 +432,75 @@ int main()
         {
             // 取得服务端 socket 单例。
             // getInstance 会确保 Winsock 环境已经初始化，并且服务端 socket 对象只创建一次。
-            CServSocket*    pServer = CServSocket::getInstance();
+            //CServSocket*    pServer = CServSocket::getInstance();
+            //// 统计 accept 客户端失败的次数，连续失败太多就结束程序。
+            //int             nCount = 0;
+            //// 初始化监听 socket：创建地址、绑定 9527 端口、进入监听状态。
+            //if (!pServer->bInitSocket())
+            //{
+            //    MessageBox(NULL, _T("网络初始化异常，未能成功初始化，请检查网络状态"),
+            //        _T("网络初始化失败"), MB_OK | MB_ICONERROR);
+            //    exit(0);
+            //}
+            //// 服务端主循环。
+            //// 只要单例对象还存在，就不断等待客户端接入并处理客户端命令。
+            //while (CServSocket::getInstance() != NULL)
+            //{
+            //    // 等待客户端连接。
+            //    // 如果没有客户端连接，bAcceptClient 内部的 accept 会阻塞等待。
+            //    if (!pServer->bAcceptClient())
+            //    {
+            //        if (nCount >= 3)
+            //        {
+            //            MessageBox(NULL, _T("多次无法正常接入用户，结束程序"),
+            //                _T("接入用户失败！"), MB_OK | MB_ICONERROR);
+            //            exit(0);
+            //        }
+            //        MessageBox(NULL, _T("无法正常接入用户，自动重试"), 
+            //            _T("接入用户失败！"), MB_OK | MB_ICONERROR);
+            //        nCount++;
+            //    }
+            //    // 客户端连接成功后，进入命令处理逻辑。
+            //    // 当前 dealCommand 里还没有真正解析命令，只是在循环 recv。
+            //    int nRet = pServer->dealCommand();
+            //}
 
-            // 统计 accept 客户端失败的次数，连续失败太多就结束程序。
-            int             nCount = 0;
-
-            // 初始化监听 socket：创建地址、绑定 9527 端口、进入监听状态。
-            if (!pServer->bInitSocket())
-            {
-                MessageBox(NULL, _T("网络初始化异常，未能成功初始化，请检查网络状态"),
-                    _T("网络初始化失败"), MB_OK | MB_ICONERROR);
-                exit(0);
+            int nCmd = 7;
+            switch (nCmd)
+            {//需求：处理文件
+            case 1:// ==> 需要查看磁盘分区
+                MakeDriverInfo();
+                break;
+            case 2:// ==> 需要查看指定目录下的文件
+                MakeDirecoryInfo();
+                break;
+            case 3:// ==> 需要打开文件
+                RunFile();
+                break;
+            case 4:// ==> 需要下载文件
+                DownLoadFile();
+                break;
+            case 5:// ==> 需要操作鼠标
+                MouseEvent();
+                break;
+            case 6:// ==> 需要发送屏幕内容 ==> 本质是发送屏幕的截图
+                SendScreen();
+                break;
+            case 7:// ==> 需要锁住机器不让用户操纵
+                LockMachine();
+                break;
+            case 8:
+                UnLockMachine();
+                break;
             }
-
-            // 服务端主循环。
-            // 只要单例对象还存在，就不断等待客户端接入并处理客户端命令。
-            while (CServSocket::getInstance() != NULL)
-            {
-                // 等待客户端连接。
-                // 如果没有客户端连接，bAcceptClient 内部的 accept 会阻塞等待。
-                if (!pServer->bAcceptClient())
-                {
-                    if (nCount >= 3)
-                    {
-                        MessageBox(NULL, _T("多次无法正常接入用户，结束程序"),
-                            _T("接入用户失败！"), MB_OK | MB_ICONERROR);
-                        exit(0);
-                    }
-
-                    MessageBox(NULL, _T("无法正常接入用户，自动重试"), 
-                        _T("接入用户失败！"), MB_OK | MB_ICONERROR);
-                    nCount++;
-                }
-
-                // 客户端连接成功后，进入命令处理逻辑。
-                // 当前 dealCommand 里还没有真正解析命令，只是在循环 recv。
-                int nRet = pServer->dealCommand();
-            }
+			
+            Sleep(5000);
+            UnLockMachine();
+            TRACE("hWnd = %d\r\n", dlg.m_hWnd);
+			while (dlg.m_hWnd != NULL && dlg.m_hWnd != INVALID_HANDLE_VALUE)
+			{
+				Sleep(10);
+			}
         }
     }
     else

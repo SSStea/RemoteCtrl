@@ -2,6 +2,8 @@
 #include "pch.h"
 #include "framework.h"
 
+#pragma pack(push)
+#pragma pack(1)
 class CPacket
 {
 public:
@@ -29,6 +31,7 @@ public:
 		sSum = packet.sSum;
 	}
 
+	//解析包的构造函数
 	CPacket(const BYTE* pData, size_t& nSize)
 	{
 		size_t pos = 0;//代表目前数据解析到哪个位置
@@ -69,7 +72,7 @@ public:
 		WORD sum = 0;
 		for (size_t j = 0; j < strData.size(); j++)
 		{
-			sum += BYTE(strData[pos]) & 0xFF;
+			sum += BYTE(strData[j]) & 0xFF;
 		}
 		if (sum = sSum)
 		{
@@ -77,6 +80,58 @@ public:
 			return;
 		}
 		nSize = 0;
+	}
+
+	//构造包的构造函数
+	CPacket(WORD nCmd, const BYTE* pData, size_t nSize)
+	{
+		sHead = 0xFEFF;
+		nLength = (DWORD)nSize + 4;//数据长度+命令长度+校验长度
+		sCmd = nCmd;
+
+		if(nSize > 0)
+		{
+			strData.resize(nSize);
+			memcpy((void*)strData.c_str(), pData, nSize);
+		}
+		else
+		{
+			strData.clear();
+		}
+
+		sSum = 0;
+		for (size_t j = 0; j < strData.size(); j++)
+		{
+			sSum += BYTE(strData[j]) & 0xFF;
+		}
+	}
+
+	//获取包的大小
+	int Size()
+	{
+		return nLength + 6;
+	}
+
+	//获取包的数据
+	const char* Data()
+	{
+		strOut.resize(nLength + 6);
+		BYTE* pData = (BYTE*)strOut.c_str(); 
+		*(WORD*)pData = sHead;
+		pData += 2;
+
+		*(DWORD*)pData = nLength;
+		pData += 4;
+
+		*(WORD*)pData = sCmd;
+		pData += 2;
+
+		memcpy(pData, strData.c_str(), strData.size());
+		pData += strData.size();
+
+		*(WORD*)pData = sSum;
+
+		return strOut.c_str();
 	}
 
 	~CPacket()
@@ -87,7 +142,23 @@ public:
 	WORD		sCmd;		//控制命令
 	std::string strData;	//包数据
 	WORD		sSum;		//校验
+	std::string strOut;		//整个包的数据
 };
+#pragma pack(pop)
+
+typedef struct MouseEvent
+{
+	MouseEvent()
+	{
+		nAction = 0;
+		nButton = -1;
+		ptXY.x	= 0;
+		ptXY.y	= 0;
+	}
+	WORD	nAction;	//点击 移动 双击
+	WORD	nButton;	//左键 右键 中键
+	POINT	ptXY;		//坐标
+}MOUSEEVENT, *pMOUSEEVENT;
 
 class CServSocket
 {
@@ -164,7 +235,7 @@ public:
 		size_t index = 0;//指向当前buffer存储的数据的位置，值表示当前存储的总长度
 		while (true)
 		{
-			size_t len = recv(m_client, buffer + index, BUFFER_SIZE - index, 0);
+			size_t len = recv(m_client, buffer + index, BUFFER_SIZE - (int)index, 0);
 			if (len <= 0)
 			{
 				return -1;
@@ -185,7 +256,39 @@ public:
 	// 向当前已连接的客户端发送数据。
 	bool bSend(const char* pData, int nSize)
 	{
+		if (m_client == -1)
+		{
+			return false;
+		}
 		return send(m_client, pData, nSize, 0) > 0;
+	}
+	bool bSend(CPacket& pack)
+	{
+		if (m_client == -1)
+		{
+			return false;
+		}
+		return send(m_client, pack.Data(), pack.Size(), 0) > 0;
+	}
+
+	bool bGetFilePath(std::string& strPath)
+	{
+		if (2 <= m_packet.sCmd  && m_packet.sCmd <= 4)
+		{
+			strPath = m_packet.strData;
+			return true;
+		}
+		return false;
+	}
+
+	bool bGetMouseEvent(MOUSEEVENT& mouse)
+	{
+		if (m_packet.sCmd == 5)
+		{
+			memcpy(&mouse, m_packet.strData.c_str(), sizeof(MOUSEEVENT));
+			return true;
+		}
+		return false;
 	}
 
 private:
