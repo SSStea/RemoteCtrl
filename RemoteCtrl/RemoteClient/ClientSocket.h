@@ -328,6 +328,7 @@ private:
 	bool					m_bAutoClosed;
 	HANDLE					m_hPktThread;
 	UINT					m_hPktThreadID;
+	HANDLE					m_hPktThreadReadyEvt;
 
 	typedef void(CClientSocket::* PKTFUNC)(UINT, WPARAM, LPARAM);
 	std::map<UINT, PKTFUNC> m_mapPktFunc;
@@ -345,6 +346,8 @@ private:
 		}
 		m_vecBuffer.resize(BUFFER_SIZE);
 		memset(m_vecBuffer.data(), 0, BUFFER_SIZE);
+
+		m_hPktThreadReadyEvt = CreateEvent(NULL, TRUE, FALSE, NULL);
 
 		struct 
 		{
@@ -384,6 +387,7 @@ private:
 	{
 		// 关闭监听 socket，并释放 Winsock 环境。
 		closesocket(m_Sock);
+		CloseHandle(m_hPktThreadReadyEvt);
 		WSACleanup();
 	}
 

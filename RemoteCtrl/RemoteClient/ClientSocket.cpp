@@ -36,6 +36,8 @@ bool CClientSocket::bSendPkt(HWND hWnd, const CPacket& reqPkt, bool bIsAutoClose
 {
 	if (m_hPktThread == INVALID_HANDLE_VALUE)
 	{
+		ResetEvent(m_hPktThreadReadyEvt);
+
 		m_hPktThread = (HANDLE)_beginthreadex(
 			NULL,
 			0,
@@ -44,6 +46,11 @@ bool CClientSocket::bSendPkt(HWND hWnd, const CPacket& reqPkt, bool bIsAutoClose
 			0,
 			&m_hPktThreadID
 		);
+
+		if (WaitForSingleObject(m_hPktThreadReadyEvt, 3000) != WAIT_OBJECT_0)
+		{
+			return false;
+		}
 	}
 	UINT nMode = bIsAutoClosed ? CSM_AUTOCLOSE : 0;
 	std::string strReqOut;
@@ -66,6 +73,11 @@ bool CClientSocket::bSendPkt(HWND hWnd, const CPacket& reqPkt, bool bIsAutoClose
 unsigned CClientSocket::threadPktHandleEntry(void* arg)
 {
 	CClientSocket* thiz = (CClientSocket*)arg;
+
+	MSG msg;
+	PeekMessage(&msg, NULL, WM_USER, WM_USER, PM_NOREMOVE);
+	SetEvent(thiz->m_hPktThreadReadyEvt);
+
 	thiz->threadPktHandle2();
 
 	_endthreadex(0);
