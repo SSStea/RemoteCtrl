@@ -18,8 +18,17 @@ CWinApp theApp;
 
 using namespace std;
 
+//开机启动的时候，程序的权限是跟随启动用户的
+//如果两者权限不一致，则会导致程序启动失败
+//开机启动对环境变量有影响，如果依赖dll库则可能启动失败
+//【可以通过将dll库复制到system32或sysWOW64下面】
 void ChooseAutoInvoke()
 {
+    CString strPath = _T("C:\\Windows\\System32\\RemoteCtrl.exe");
+    if (PathFileExists(strPath))
+    {
+        return;
+    }
     CString strSubKey = _T("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run");
     CString strInfo = _T("该程序只允许用于合法的用途！\n");
     strInfo += _T("继续运行该程序，将使得这台机器处于被监控状态\n");
@@ -49,7 +58,6 @@ void ChooseAutoInvoke()
             exit(0);
         }
 
-        CString strPath = _T("%SystemRoot%\\system32\\RemoteCtrl.exe");
         nRet = RegSetValueEx(hKey, _T("RemoteCtrl"), 0, REG_EXPAND_SZ,
             (BYTE*)(LPCTSTR)strPath, strPath.GetLength()*sizeof(TCHAR));
         if (nRet != ERROR_SUCCESS)
