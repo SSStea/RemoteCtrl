@@ -5,6 +5,7 @@
 #include "framework.h"
 #include "ServSocket.h"
 #include "Command.h"
+#include <conio.h>
 
 
 #ifdef _DEBUG
@@ -51,6 +52,17 @@ void udp_server();
 
 void udp_client(bool bIsHost = true);
 
+void initsock()
+{
+	WSADATA wsa;
+	WSAStartup(MAKEWORD(2, 2), &wsa);
+}
+
+void clearsock()
+{
+	WSACleanup();
+}
+
 int main(int argc, char* argv[])
 {
 	//if (!CEdoyunTool::IsAdmin())//管理员用户  TODO:这里条件取反 为了测试方便避免提权操作(也就是普通用户会进入此逻辑)
@@ -90,6 +102,7 @@ int main(int argc, char* argv[])
  //       }     
 	//}
 
+	initsock();
 	if (argc == 1)
 	{
 		char wstrDir[MAX_PATH];
@@ -129,6 +142,7 @@ int main(int argc, char* argv[])
 	{
 		udp_client(false);
 	}
+	clearsock();
 	//}
 	//else//普通用户   需要提权创建新进程
 	//{
@@ -138,8 +152,67 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
+
 void udp_server()
 {
+	printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
+	
+	SOCKET sock = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sock == INVALID_SOCKET)
+	{
+		printf("%s(%d):%s server ERROR(%d)!!!\r\n", __FILE__, __LINE__, 
+			__FUNCTION__, WSAGetLastError());
+		return;
+	}
+
+	std::list<sockaddr_in> lstClients;
+
+	sockaddr_in server, client;
+	int len = sizeof(sockaddr_in);
+	memset(&server, 0, sizeof(sockaddr_in));
+	memset(&client, 0, sizeof(sockaddr_in));
+	server.sin_family = AF_INET;
+	server.sin_port = htons(20000);
+	server.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+	if (bind(sock, (const sockaddr*)&server, sizeof(sockaddr)) == -1)
+	{
+		printf("%s(%d):%s server ERROR(%d)!!!\r\n", __FILE__, __LINE__,
+			__FUNCTION__, WSAGetLastError());
+		closesocket(sock);
+		return;
+	}
+
+	char buffer[4096] = "";
+	int ret = 0;
+	while (!_kbhit())
+	{
+		ret = recvfrom(sock, buffer, sizeof(buffer), 0, (sockaddr*)&client, &len);
+		if (ret > 0)
+		{
+			if (lstClients.size() <= 0)
+			{
+				lstClients.push_back(client);
+				printf("%s(%d):%s server ip %08X port %d\r\n", __FILE__, __LINE__,
+					__FUNCTION__, client.sin_addr.s_addr, ntohs(client.sin_port));
+				ret = sendto(sock, buffer, ret, 0, (const sockaddr*)&client, len);
+				printf("%s(%d):%s server \r\n", __FILE__, __LINE__, __FUNCTION__);
+			}
+			//CEdoyunTool::Dump((BYTE*)buffer, ret);
+			else
+			{
+				memcpy((void*)buffer, &lstClients.front(), sizeof(lstClients.front()));
+				ret = sendto(sock, buffer, sizeof(lstClients.front()), 0, (const sockaddr*)&client, len);
+				printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
+			}
+		}
+		else
+		{
+			printf("%s(%d):%s server ERROR(%d)!!! ret = %d\r\n", __FILE__, __LINE__, 
+				__FUNCTION__, WSAGetLastError(), ret);
+		}
+	}
+	closesocket(sock);
 	printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
 
 	getchar();
@@ -147,12 +220,103 @@ void udp_server()
 
 void udp_client(bool bIsHost)
 {
-	if (bIsHost)
+	Sleep(2000);
+	SOCKET sock = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sock == INVALID_SOCKET)
 	{
+		printf("%s(%d):%s ERROR(%d)!!!\r\n", __FILE__, __LINE__,
+			__FUNCTION__, WSAGetLastError());
+		return;
+	}
+
+	sockaddr_in server, client;
+	int len = sizeof(sockaddr_in);
+	memset(&server, 0, sizeof(sockaddr_in));
+	memset(&client, 0, sizeof(sockaddr_in));
+	server.sin_family = AF_INET;
+	server.sin_port = htons(20000);
+	server.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+
+	if (bIsHost)
+	{//主客户端
 		printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
+
+		std::string strMsg = "hello world!\n";
+		int ret = sendto(sock, strMsg.c_str(), (int)strMsg.length(), 0,
+			(const sockaddr*)&server, sizeof(server));
+		printf("%s(%d):%s host ERROR(%d)!!! ret = %d\r\n", __FILE__, __LINE__, 
+			__FUNCTION__, WSAGetLastError(), ret);
+
+		if (ret > 0)
+		{
+			strMsg.resize(1024);
+			memset((char*)strMsg.c_str(), 0, strMsg.size());
+
+			ret = recvfrom(sock, (char*)strMsg.c_str(), (int)strMsg.length(), 0,
+				(sockaddr*)&client, &len);
+			printf("%s(%d):%s host ERROR(%d)!!! ret = %d\r\n", __FILE__, __LINE__,
+				__FUNCTION__, WSAGetLastError(), ret);
+
+			if (ret > 0)
+			{
+				printf("%s(%d):%s host ip %08X port %d\r\n", __FILE__, __LINE__,
+					__FUNCTION__, client.sin_addr.s_addr, ntohs(client.sin_port));
+				printf("%s(%d):%s host ret = %d\r\n", __FILE__, __LINE__, __FUNCTION__, strMsg.size());
+			}
+
+			ret = recvfrom(sock, (char*)strMsg.c_str(), (int)strMsg.length(), 0,
+				(sockaddr*)&client, &len);
+			printf("%s(%d):%s host ERROR(%d)!!! ret = %d\r\n", __FILE__, __LINE__,
+				__FUNCTION__, WSAGetLastError(), ret);
+
+			if (ret > 0)
+			{
+				printf("%s(%d):%s host ip %08X port %d\r\n", __FILE__, __LINE__,
+					__FUNCTION__, client.sin_addr.s_addr, ntohs(client.sin_port));
+				printf("%s(%d):%s host ret = %s\r\n", __FILE__, __LINE__, __FUNCTION__, strMsg.c_str());
+			}
+		}
 	}
 	else
-	{
+	{//从客户端
 		printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
+
+		std::string strMsg = "hello world!\n";
+		int ret = sendto(sock, strMsg.c_str(), (int)strMsg.length(), 0,
+			(const sockaddr*)&server, sizeof(server));
+		printf("%s(%d):%s client ERROR(%d)!!! ret = %d\r\n", __FILE__, __LINE__, 
+			__FUNCTION__, WSAGetLastError(), ret);
+
+		if (ret > 0)
+		{
+			strMsg.resize(1024);
+			memset((char*)strMsg.c_str(), 0, strMsg.size());
+
+			ret = recvfrom(sock, (char*)strMsg.c_str(), (int)strMsg.length(), 0,
+				(sockaddr*)&client, &len);
+			printf("%s(%d):%s client ERROR(%d)!!! ret = %d\r\n", __FILE__, __LINE__,
+				__FUNCTION__, WSAGetLastError(), ret);
+			
+			if (ret > 0)
+			{
+				sockaddr_in addr;
+				memcpy(&addr, strMsg.c_str(), sizeof(addr));
+				sockaddr_in* pAddr = (sockaddr_in*)&addr;
+				printf("%s(%d):%s client ip %08X port %d\r\n", __FILE__, __LINE__,
+					__FUNCTION__, client.sin_addr.s_addr, ntohs(client.sin_port));
+				printf("%s(%d):%s client ret = %d\r\n", __FILE__, __LINE__, __FUNCTION__, strMsg.size());
+				
+				printf("%s(%d):%s client ip %08X port %d\r\n", __FILE__, __LINE__,
+					__FUNCTION__, pAddr->sin_addr.s_addr, ntohs(pAddr->sin_port));
+
+				strMsg = "hello i am client!\r\n";
+				ret = sendto(sock, (char*)strMsg.c_str(), (int)strMsg.length(), 0, 
+					(const sockaddr*)pAddr, sizeof(sockaddr_in));
+				printf("%s(%d):%s client ERROR(%d)!!! ret = %d\r\n", __FILE__, __LINE__,
+					__FUNCTION__, WSAGetLastError(), ret);
+			}
+		}
 	}
+	closesocket(sock);
 }
