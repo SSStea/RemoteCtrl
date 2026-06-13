@@ -427,10 +427,10 @@ int CCommand::UnLockMachine(std::list<CPacket>& lstOutPacket, CPacket& inPacket)
 int CCommand::DeleteLocalFile(std::list<CPacket>& lstOutPacket, CPacket& inPacket)
 {
 		std::string strPath = inPacket.strData;
-		TCHAR sPath[MAX_PATH] = _T("");
+		//TCHAR sPath[MAX_PATH] = _T("");
 		//mbstowcs(sPath, strPath.c_str(), strPath.size());中文容易乱码
-		MultiByteToWideChar(CP_ACP, 0, strPath.c_str(), (int)strPath.size(), sPath, sizeof(sPath) / sizeof(TCHAR));
-		DeleteFile(sPath);
+		//MultiByteToWideChar(CP_ACP, 0, strPath.c_str(), (int)strPath.size(), sPath, sizeof(sPath) / sizeof(TCHAR));
+		DeleteFileA(strPath.c_str());
 
 		CPacket pack(9, NULL, 0);
         lstOutPacket.push_back(pack);
