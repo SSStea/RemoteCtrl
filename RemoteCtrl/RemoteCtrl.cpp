@@ -6,6 +6,7 @@
 #include "ServSocket.h"
 #include "Command.h"
 #include <conio.h>
+#include "ESocket.h"
 
 
 #ifdef _DEBUG
@@ -152,70 +153,43 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
+#include "ENetWorkt.h"
+
+int RecvFromCB(void* arg, const EBuffer& buffer, ESockAddrIn& addr)
+{
+	EServer* server = (EServer*)arg;
+	return server->SendTo(addr, buffer);
+}
+int SendToCB(void* arg, const ESockAddrIn& addr, int ret)
+{
+	EServer* server = (EServer*)arg;
+	printf("sendto done!\r\n");
+
+	return 0;
+}
 
 void udp_server()
 {
-	printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
-	
-	SOCKET sock = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sock == INVALID_SOCKET)
-	{
-		printf("%s(%d):%s server ERROR(%d)!!!\r\n", __FILE__, __LINE__, 
-			__FUNCTION__, WSAGetLastError());
-		return;
-	}
+	std::list<ESockAddrIn> lstClients;
 
-	std::list<sockaddr_in> lstClients;
-
-	sockaddr_in server, client;
-	int len = sizeof(sockaddr_in);
-	memset(&server, 0, sizeof(sockaddr_in));
-	memset(&client, 0, sizeof(sockaddr_in));
-	server.sin_family = AF_INET;
-	server.sin_port = htons(20000);
-	server.sin_addr.s_addr = inet_addr("127.0.0.1");
-
-	if (bind(sock, (const sockaddr*)&server, sizeof(sockaddr)) == -1)
-	{
-		printf("%s(%d):%s server ERROR(%d)!!!\r\n", __FILE__, __LINE__,
-			__FUNCTION__, WSAGetLastError());
-		closesocket(sock);
-		return;
-	}
-
-	char buffer[4096] = "";
-	int ret = 0;
-	while (!_kbhit())
-	{
-		ret = recvfrom(sock, buffer, sizeof(buffer), 0, (sockaddr*)&client, &len);
-		if (ret > 0)
-		{
-			if (lstClients.size() <= 0)
-			{
-				lstClients.push_back(client);
-				printf("%s(%d):%s server ip %08X port %d\r\n", __FILE__, __LINE__,
-					__FUNCTION__, client.sin_addr.s_addr, ntohs(client.sin_port));
-				ret = sendto(sock, buffer, ret, 0, (const sockaddr*)&client, len);
-				printf("%s(%d):%s server \r\n", __FILE__, __LINE__, __FUNCTION__);
-			}
-			//CEdoyunTool::Dump((BYTE*)buffer, ret);
-			else
-			{
-				memcpy((void*)buffer, &lstClients.front(), sizeof(lstClients.front()));
-				ret = sendto(sock, buffer, sizeof(lstClients.front()), 0, (const sockaddr*)&client, len);
-				printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
-			}
-		}
-		else
-		{
-			printf("%s(%d):%s server ERROR(%d)!!! ret = %d\r\n", __FILE__, __LINE__, 
-				__FUNCTION__, WSAGetLastError(), ret);
-		}
-	}
-	closesocket(sock);
 	printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
 
+	EServerParameter param(
+		"127.0.0.1",
+		20000,
+		ETYPE::ETypeUdp,
+		NULL,
+		NULL,
+		NULL,
+		RecvFromCB,
+		SendToCB
+	);
+	EServer server(param);
+	server.Invoke(&server);
+
+	printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
 	getchar();
+	return;
 }
 
 void udp_client(bool bIsHost)
@@ -242,7 +216,7 @@ void udp_client(bool bIsHost)
 	{//主客户端
 		printf("%s(%d):%s\r\n", __FILE__, __LINE__, __FUNCTION__);
 
-		std::string strMsg = "hello world!\n";
+		EBuffer strMsg = "hello world!\n";
 		int ret = sendto(sock, strMsg.c_str(), (int)strMsg.length(), 0,
 			(const sockaddr*)&server, sizeof(server));
 		printf("%s(%d):%s host ERROR(%d)!!! ret = %d\r\n", __FILE__, __LINE__, 
@@ -262,7 +236,7 @@ void udp_client(bool bIsHost)
 			{
 				printf("%s(%d):%s host ip %08X port %d\r\n", __FILE__, __LINE__,
 					__FUNCTION__, client.sin_addr.s_addr, ntohs(client.sin_port));
-				printf("%s(%d):%s host ret = %d\r\n", __FILE__, __LINE__, __FUNCTION__, strMsg.size());
+				printf("%s(%d):%s host ret = %d\r\n", __FILE__, __LINE__, __FUNCTION__, (int)strMsg.size());
 			}
 
 			ret = recvfrom(sock, (char*)strMsg.c_str(), (int)strMsg.length(), 0,
@@ -305,7 +279,7 @@ void udp_client(bool bIsHost)
 				sockaddr_in* pAddr = (sockaddr_in*)&addr;
 				printf("%s(%d):%s client ip %08X port %d\r\n", __FILE__, __LINE__,
 					__FUNCTION__, client.sin_addr.s_addr, ntohs(client.sin_port));
-				printf("%s(%d):%s client ret = %d\r\n", __FILE__, __LINE__, __FUNCTION__, strMsg.size());
+				printf("%s(%d):%s client ret = %d\r\n", __FILE__, __LINE__, __FUNCTION__, (int)strMsg.size());
 				
 				printf("%s(%d):%s client ip %08X port %d\r\n", __FILE__, __LINE__,
 					__FUNCTION__, pAddr->sin_addr.s_addr, ntohs(pAddr->sin_port));

@@ -144,7 +144,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Command.h" />
+    <ClInclude Include="EdoyunThread.h" />
     <ClInclude Include="EdoyunTool.h" />
+    <ClInclude Include="ENetWorkt.h" />
+    <ClInclude Include="ESocket.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="LockInfoDialog.h" />
     <ClInclude Include="Packet.h" />
@@ -157,6 +160,8 @@
   <ItemGroup>
     <ClCompile Include="Command.cpp" />
     <ClCompile Include="EdoyunTool.cpp" />
+    <ClCompile Include="ENetWorkt.cpp" />
+    <ClCompile Include="ESocket.cpp" />
     <ClCompile Include="LockInfoDialog.cpp" />
     <ClCompile Include="Packet.cpp" />
     <ClCompile Include="pch.cpp">

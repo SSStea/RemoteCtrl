@@ -45,6 +45,15 @@
     <ClInclude Include="Packet.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="ESocket.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ENetWorkt.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="EdoyunThread.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RemoteCtrl.cpp">
@@ -66,6 +75,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Packet.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ESocket.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ENetWorkt.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
